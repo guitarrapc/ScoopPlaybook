@@ -1,0 +1,34 @@
+image: Ubuntu1804
+version: '1.0.{build}'
+shallow_clone: false
+skip_branch_with_pr: true
+services:
+- docker
+
+branches:
+  only:
+    - master
+
+environment:
+  PS_GELLERY_RELEASE_API:
+    secure: xBR5JNFYMUisp+oIx08EbfQ5xWsToa0XufJKuyaazeXy9wYcs6Fezw//NtW60uOF
+
+install:
+  - pwsh --version
+
+before_build:
+  - docker pull mcr.microsoft.com/powershell:6.1.0-ubuntu-18.04
+  - docker image ls
+
+build: off
+
+build_script:
+  - docker run --rm -w /app -v "${APPVEYOR_BUILD_FOLDER}:/app" mcr.microsoft.com/powershell:6.1.0-ubuntu-18.04 pwsh -file ./build_psd1.ps1 -Version ${APPVEYOR_BUILD_VERSION}
+  - 7z a "${APPVEYOR_BUILD_FOLDER}/publish/ScoopPlaybook_${APPVEYOR_BUILD_VERSION}.zip" "${APPVEYOR_BUILD_FOLDER}/publish/ScoopPlaybook/"
+
+deploy_script:
+  - pwsh -file ./deploy_pagallery.ps1 -NuGetApiKey ${PS_GELLERY_RELEASE_API} -BuildBranch master -ModuleName ScoopPlaybook
+
+artifacts:
+  - path: ./publish/ScoopPlaybook_${APPVEYOR_BUILD_VERSION}.zip
+    name: ScoopPlaybook_${APPVEYOR_BUILD_VERSION}

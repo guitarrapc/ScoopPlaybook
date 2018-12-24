@@ -1,0 +1,1 @@
+docker run --rm -v ${pwd}:/app -w /app mcr.microsoft.com/powershell:6.1.0-ubuntu-18.04 pwsh -file build_psd1.ps1 -Version 1.0.0
