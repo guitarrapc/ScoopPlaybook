@@ -1,3 +1,5 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/ost9gjuwwgy0v8ly/branch/master?svg=true)](https://ci.appveyor.com/project/guitarrapc/scoopplaybook/branch/master)
+
 ## ScoopPlaybook
 
 PowerShell Module to Play Scoop like Ansible
