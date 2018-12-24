@@ -3,7 +3,8 @@
 param (
     [string]$ModuleName,
     [string]$NuGetApiKey,
-    [string]$BuildBranch
+    [string]$BuildBranch,
+    [string]$TagVersion
 )
 
 # validation
@@ -11,8 +12,8 @@ if ($env:APPVEYOR_REPO_BRANCH -notmatch $BuildBranch) {
     Write-Host -ForeGroundColor Yellow "`"Appveyor`" deployment has been skipped as environment variable has not matched (`"APPVEYOR_REPO_BRANCH`" is `"$env:APPVEYOR_REPO_BRANCH`", should be `"$branch`""
     return
 }
-if ([string]::IsNullOrWhiteSpace($env:APPVEYOR_REPO_TAG_NAME)) {
-    Write-Host -ForeGroundColor Yellow "`"Appveyor`" deployment has been skipped as `"APPVEYOR_REPO_TAG_NAME`" environment variable is blank"
+if ([string]::IsNullOrWhiteSpace($TagVersion)) {
+    Write-Host -ForeGroundColor Yellow "`"Appveyor`" deployment has been skipped as `"TagVersion`" is blank"
     return
 }
 if ([string]::IsNullOrWhiteSpace($NuGetApiKey)) {
@@ -33,7 +34,7 @@ $version = $env:APPVEYOR_REPO_TAG_NAME
 $manifest = Invoke-Expression (Get-Content $manifestPath -Raw)
 $manifest
 if ($manifest.ModuleVersion -ne $version) {
-    throw "`"Appveyor`" deployment has been canceled. Version update failed (`Manifest Version is `"${$manifest.ModuleVersion}`", should be `"$version`")"
+    throw "`"Appveyor`" deployment has been canceled. Version update failed (`Manifest Version is `"$($manifest.ModuleVersion)`", should be `"$version`")"
 }
 
 # Publish to PS Gallery

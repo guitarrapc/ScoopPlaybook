@@ -1,7 +1,8 @@
 #!/usr/bin/env pwsh
 [OutputType([void])]
 param (
-    [string]$Version
+    [string]$Version,
+    [string]$TagVersion
 )
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $path = "$here/src/ScoopPlaybook.psd1"
@@ -14,9 +15,9 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     Write-Host -ForeGroundColor Yellow "Version not specified, please specify semantic version."
     return;
 }
-if (![string]::IsNullOrWhiteSpace($env:APPVEYOR_REPO_TAG_NAME)) {
-    Write-Host -ForeGroundColor Yellow "APPVEYOR_REPO_TAG_NAME detected. override Version via $env:APPVEYOR_REPO_TAG_NAME."
-    $Version = $env:APPVEYOR_REPO_TAG_NAME
+if (![string]::IsNullOrWhiteSpace($TagVersion)) {
+    Write-Host -ForeGroundColor Yellow "APPVEYOR_REPO_TAG_NAME detected. override Version via $TagVersion."
+    $Version = $TagVersion
 }
 if (Test-Path $path) {
     $manifest = Invoke-Expression (Get-Content $path -Raw)

@@ -23,11 +23,12 @@ before_build:
 build: off
 
 build_script:
-  - docker run --rm -w /app -v "${APPVEYOR_BUILD_FOLDER}:/app" mcr.microsoft.com/powershell:6.1.0-ubuntu-18.04 pwsh -file ./build_psd1.ps1 -Version ${APPVEYOR_BUILD_VERSION}
+  - export version=
+  - docker run --rm -w /app -v "${APPVEYOR_BUILD_FOLDER}:/app" mcr.microsoft.com/powershell:6.1.0-ubuntu-18.04 pwsh -file ./build_psd1.ps1 -Version ${APPVEYOR_BUILD_VERSION} -TagVersion ${APPVEYOR_REPO_TAG_NAME}
   - 7z a "${APPVEYOR_BUILD_FOLDER}/publish/ScoopPlaybook_${APPVEYOR_BUILD_VERSION}.zip" "${APPVEYOR_BUILD_FOLDER}/publish/ScoopPlaybook/"
 
 deploy_script:
-  - pwsh -file ./deploy_pagallery.ps1 -NuGetApiKey ${PS_GELLERY_RELEASE_API} -BuildBranch master -ModuleName ScoopPlaybook
+  - pwsh -file ./deploy_pagallery.ps1 -NuGetApiKey ${PS_GELLERY_RELEASE_API} -BuildBranch master -ModuleName ScoopPlaybook -TagVersion ${APPVEYOR_REPO_TAG_NAME}
 
 artifacts:
   - path: ./publish/ScoopPlaybook_${APPVEYOR_BUILD_VERSION}.zip
