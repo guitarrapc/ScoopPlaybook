@@ -14,6 +14,10 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     Write-Host -ForeGroundColor Yellow "Version not specified, please specify semantic version."
     return;
 }
+if (![string]::IsNullOrWhiteSpace($env:APPVEYOR_REPO_TAG_NAME)) {
+    Write-Host -ForeGroundColor Yellow "APPVEYOR_REPO_TAG_NAME detected. override Version via $env:APPVEYOR_REPO_TAG_NAME."
+    $Version = $env:APPVEYOR_REPO_TAG_NAME
+}
 if (Test-Path $path) {
     $manifest = Invoke-Expression (Get-Content $path -Raw)
     if ($manifest.ModuleVersion -eq $Version) {
