@@ -25,12 +25,13 @@ Write-Host -ForegroundColor Green 'Running AppVeyor deploy script'
 
 # environment variables
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$modulePath = "$here/publish/$moduleName"
-$manifestPath = "$here/publish/$moduleName/$moduleName.psd1"
+$modulePath = "$here/publish/$ModuleName"
+$manifestPath = "$here/publish/$ModuleName/$ModuleName.psd1"
 $version = $env:APPVEYOR_REPO_TAG_NAME
 
 # Test Version is correct
 $manifest = Invoke-Expression (Get-Content $manifestPath -Raw)
+$manifest
 if ($manifest.ModuleVersion -ne $version) {
     throw "`"Appveyor`" deployment has been canceled. Version update failed (`Manifest Version is `"${$manifest.ModuleVersion}`", should be `"$version`")"
 }
