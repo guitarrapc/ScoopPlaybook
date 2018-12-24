@@ -22,8 +22,10 @@ if (![string]::IsNullOrWhiteSpace($TagVersion)) {
 if (Test-Path $path) {
     $manifest = Invoke-Expression (Get-Content $path -Raw)
     if ($manifest.ModuleVersion -eq $Version) {
-        Write-Host -ForeGroundColor Yellow "Same version specified, nothing to do."
-        return;
+        Write-Host -ForeGroundColor Yellow "Same version specified, just copy existsis."
+        Prepare -Path ./publish/ScoopPlaybook
+        Copy-Item -Path src/*, *.md -Destination "$publish/"
+        return
     }
 }
 
