@@ -28,7 +28,7 @@ build_script:
   - 7z a "${APPVEYOR_BUILD_FOLDER}/publish/ScoopPlaybook_${APPVEYOR_BUILD_VERSION}.zip" "${APPVEYOR_BUILD_FOLDER}/publish/ScoopPlaybook/"
 
 deploy_script:
-  - pwsh -file ./deploy_pagallery.ps1 -NuGetApiKey ${PS_GELLERY_RELEASE_API} -BuildBranch master -ModuleName ScoopPlaybook -TagVersion ${APPVEYOR_REPO_TAG_NAME}
+  - pwsh -file ./deploy_pagallery.ps1 -NuGetApiKey ${PS_GELLERY_RELEASE_API} -BuildBranch master -ModuleName ScoopPlaybook -TagVersion "${APPVEYOR_REPO_TAG_NAME}"
 
 artifacts:
   - path: ./publish/ScoopPlaybook_${APPVEYOR_BUILD_VERSION}.zip
