@@ -143,11 +143,11 @@ function ScoopInstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForegroundColor Yellow "changed: [$([Keywords]::scoop_install): $tool]"
+                Write-Host -ForegroundColor Yellow "changed: [${Tag}: $tool]"
                 scoop install $tool
             }
             else {
-                Write-Host -ForeGroundColor Green "ok: [$([Keywords]::scoop_install): $tool]"
+                Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool]"
                 scoop update $tool
             }
         }
@@ -185,9 +185,17 @@ function ScoopUninstall {
             }
         }
         else {
-            Write-Host -ForegroundColor Yellow "changed: [${Tag}: $tool]"
-            scoop uninstall $tool
-        }
+            $output = scoop info $tool
+            $installed = $output | Select-String -Pattern "Installed:"
+            if ($installed.Line -match "no") {
+                Write-Host -ForegroundColor Yellow "changed: [${Tag}: $tool]"
+                scoop install $tool
+            }
+            else {
+                Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool]"
+                scoop update $tool
+            }
+         }
     }
 }
 
