@@ -4,10 +4,10 @@ using namespace System.Collections.Generic
 # setup
 Set-StrictMode -Version Latest
 
-enum Modules {name; scoop_install; scoop_uninstall; scoop_install_extras; }
+enum Modules {name; scoop_install; scoop_install_extras; }
 enum RunMode {check; run; update_scoop; }
-enum RoleElement {name; state;}
-enum StateElement {present; absent;}
+enum ModuleElement {name; state; }
+enum StateElement {present; absent; }
 
 [RunMode]$script:modeType = [RunMode]::run
 $lineWidth = 83
@@ -43,25 +43,28 @@ function RunMain {
     )
     
     if (!(Test-Path $BaseYaml)) {
-        return 1
+        throw [System.IO.FileNotFoundException]::New("File not found. $BaseYaml")
     }
+    
+    # Handle Playbook
     $basePath = [System.IO.Path]::GetDirectoryName($BaseYaml)
     $definitions = Get-Content -LiteralPath $BaseYaml -Raw | ConvertFrom-Yaml
     if ($null -eq $definitions) {
         Write-Host "Nothing definied in $BaseYaml"
-        return 1
+        return
     }
     $playbookName = $definitions["name"]
     $roles = $definitions["roles"].ToArray()
     if ($null -eq $roles) {
         Write-Host "No roles definied in $BaseYaml"
-        return 1
+        return
     }
 
-    # BaseYaml's role existstance check
     $marker = "*" * ($lineWidth - "PLAY [$playbookName]".Length)
     Write-Host "PLAY [$playbookName] $marker"
     Write-Host ""
+
+    # Handle Role
     foreach ($role in $roles) {
         Write-Verbose "Checking role definition from [$basePath/roles/$role/tasks/]"
         $tasks = Get-ChildItem -LiteralPath "$basePath/roles/$role/tasks/" -Include *.yml -File
@@ -69,54 +72,90 @@ function RunMain {
             continue
         }
 
-        # role's Task check and run
+        # Handle Task
         foreach ($task in $tasks.FullName) {
             Write-Verbose "Read from [$task]"
             $taskDef = Get-Content -LiteralPath $task -Raw | ConvertFrom-Yaml
-
-            # role
+            if ($null -eq $taskDef) {
+                Write-Verbose "No valid task definied in $task"
+                continue
+            }
+        
+            # Handle Module
             foreach ($module in $taskDef) {
                 $name = $module["name"]
-                # task's "scoop_install" check
+                $module.Remove("name")
+
+                # check which module
                 $containsInstall = $module.Contains([Modules]::scoop_install.ToString())
-                # task contains "scoop_uninstall" check
-                $containsUninstall = $module.Contains([Modules]::scoop_uninstall.ToString())
-                # task contains "scoop_install_extras" check
                 $containsExtraInstall = $module.Contains([Modules]::scoop_install_extras.ToString())
 
                 if ($containsInstall) {
+                    # handle scoop_install
+                    $tag = [Modules]::scoop_install
                     if ([string]::IsNullOrWhiteSpace($name)) {
-                        $name = [Modules]::scoop_install.ToString()
+                        $name = $tag.ToString()
                     }
                     $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
-                    ScoopInstall -Module $module -Tag ([Modules]::scoop_install)
-                }
-                elseif ($containsUninstall) {
-                    if ([string]::IsNullOrWhiteSpace($name)) {
-                        $name = [Modules]::scoop_uninstall.ToString()
-                    }
-                    $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
-                    Write-Host "TASK [$role : $name] $marker"
-                    ScoopUninstall -Module $module -Tag ([Modules]::scoop_uninstall)
+                    ScoopStateHandler -Module $module -Tag $tag
                 }
                 elseif ($containsExtraInstall) {
+                    # handle scoop_install_extras
+                    $tag = [Modules]::scoop_install_extras
                     if ([string]::IsNullOrWhiteSpace($name)) {
-                        $name = [Modules]::scoop_install_extras.ToString()
+                        $name = $tag.ToString()
                     }
                     $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
-                    scoop bucket add extras
-                    ScoopInstall -Module $module -Tag ([Modules]::scoop_install_extras)
+                    ScoopStateHandler -Module $module -Tag $tag
                 }
                 else {
                     $marker = "*" * ($lineWidth - "skipped: TASK [$role : $name]".Length)
-                    $def.Remove("name")
-                    throw "Invalid module `"$($module.Keys)`"spacified"
-                    return 1
+                    Write-Host "TASK [$role : $name] $marker"
+                    if ($module.Keys.Count -eq 0) {
+                        Write-Host -ForeGroundColor DarkGray "skipping, no module specified"
+                        continue
+                    }
+                    else {    
+                        throw "Invalid key spacified in module `"$($module.Keys -join ',')`""
+                        return 1
+                    }
                 }
                 Write-Host ""
             }
+        }
+    }
+}
+
+function ScoopStateHandler {
+    [OutputType([int])]
+    param(
+        [HashTable]$Module,
+        [Modules]$Tag
+    )
+
+    $moduleDetail = $module["$tag"]
+
+    # blank definition
+    # hash table null should detect with string cast..... orz
+    if ([string]::IsNullOrWhiteSpace($moduleDetail)) {
+        Write-Verbose "no valid module defined"
+        return
+    }
+
+    # pick up state and switch to install/uninstall
+    $state = $moduleDetail[$([ModuleElement]::state.ToString())]
+    if ($null -eq $state) {
+        $state = [StateElement]::present
+    }
+
+    switch ($state) {
+        $([StateElement]::present) {
+            ScoopInstall -Module $moduleDetail -Tag $tag
+        }
+        $([StateElement]::absent) {
+            ScoopUninstall -Module $moduleDetail -Tag $tag
         }
     }
 }
@@ -127,20 +166,17 @@ function ScoopInstall {
         [HashTable]$Module,
         [Modules]$Tag
     )
+   
+    $tools = $Module[$([ModuleElement]::name.ToString())]
 
-    $def = $Module["$Tag"]
-    if ($null -eq $def) {
-        return
+    # blank definition
+    # hash table null should detect with string cast..... orz
+    if ([string]::IsNullOrWhiteSpace($tools)) {
+        Write-Verbose "Skipping, missing any tools"
+        continue
     }
-    
-    $tools = $def[$([RoleElement]::name.ToString())]
 
     foreach ($tool in $tools) {
-        # blank definition
-        if ([string]::IsNullOrWhiteSpace($tool)) {
-            continue
-        }
-
         if ($script:modeType -eq [RunMode]::check) {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
@@ -175,19 +211,14 @@ function ScoopUninstall {
         [Modules]$Tag
     )
 
-    $def = $Module["$Tag"]
-    if ($null -eq $def) {
-        return
+    $tools = $Module[$([ModuleElement]::name.ToString())]
+    # blank definition
+    if ([string]::IsNullOrWhiteSpace($tools)) {
+        Write-Verbose "Skipping, missing any tools"
+        continue
     }
 
-    $tools = $def[$([RoleElement]::name.ToString())]
-
     foreach ($tool in $tools) {
-        # blank definition
-        if ([string]::IsNullOrWhiteSpace($tool)) {
-            continue
-        }
-
         if ($script:modeType -eq [RunMode]::check) {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
@@ -197,7 +228,7 @@ function ScoopUninstall {
             }
             else {
                 Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Require uninstall"
-                Write-Host -ForeGroundColor Yellow "$($installed.Line)$($output[$installed.LineNumber++])"
+                Write-Host -ForeGroundColor Yellow "$($installed.Line)$($output[++$installed.LineNumber])"
             }
         }
         else {
@@ -210,7 +241,7 @@ function ScoopUninstall {
                 Write-Host -ForeGroundColor Yellow "changed: [${Tag}: $tool] => Require uninstall"
                 scoop uninstall $tool
             }
-         }
+        }
     }
 }
 
