@@ -20,6 +20,8 @@ function Update([string]$Path, [string]$Version, [string]$Guid) {
         RootModule           = "ScoopPlaybook.psm1"
         Description          = "PowerShell Module to run scoop like ansible playbook"
         CompatiblePSEditions = ("Core", "Desktop")
+        FunctionsToExport    = ("Invoke-ScoopPlaybook")
+        AliasesToExport      = ("Scoop-Playbook")
         Tags                 = "Scoop"
         ProjectUri           = "https://github.com/guitarrapc/ScoopPlaybook"
         LicenseUri           = "https://github.com/guitarrapc/ScoopPlaybook/blob/master/LICENSE.md"
