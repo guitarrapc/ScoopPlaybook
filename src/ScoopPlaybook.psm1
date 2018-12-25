@@ -4,7 +4,7 @@ using namespace System.Collections.Generic
 # setup
 Set-StrictMode -Version Latest
 
-enum Keywords {name; scoop_install; scoop_uninstall; scoop_install_extras; }
+enum Modules {name; scoop_install; scoop_uninstall; scoop_install_extras; }
 enum RunMode {check; run; update_scoop; }
 enum RoleElement {name; state;}
 enum StateElement {present; absent;}
@@ -75,44 +75,44 @@ function RunMain {
             $taskDef = Get-Content -LiteralPath $task -Raw | ConvertFrom-Yaml
 
             # role
-            foreach ($def in $taskDef) {
-                $name = $def["name"]
-                # task contains "scoop_install" check
-                $containsInstall = $def.Contains([Keywords]::scoop_install.ToString())
+            foreach ($module in $taskDef) {
+                $name = $module["name"]
+                # task's "scoop_install" check
+                $containsInstall = $module.Contains([Modules]::scoop_install.ToString())
                 # task contains "scoop_uninstall" check
-                $containsUninstall = $def.Contains([Keywords]::scoop_uninstall.ToString())
+                $containsUninstall = $module.Contains([Modules]::scoop_uninstall.ToString())
                 # task contains "scoop_install_extras" check
-                $containsExtraInstall = $def.Contains([Keywords]::scoop_install_extras.ToString())
+                $containsExtraInstall = $module.Contains([Modules]::scoop_install_extras.ToString())
 
                 if ($containsInstall) {
                     if ([string]::IsNullOrWhiteSpace($name)) {
-                        $name = [Keywords]::scoop_install.ToString()
+                        $name = [Modules]::scoop_install.ToString()
                     }
                     $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
-                    ScoopInstall -TaskDef $def -Tag ([Keywords]::scoop_install)
+                    ScoopInstall -Module $module -Tag ([Modules]::scoop_install)
                 }
                 elseif ($containsUninstall) {
                     if ([string]::IsNullOrWhiteSpace($name)) {
-                        $name = [Keywords]::scoop_uninstall.ToString()
+                        $name = [Modules]::scoop_uninstall.ToString()
                     }
                     $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
-                    ScoopUninstall -TaskDef $def -Tag ([Keywords]::scoop_uninstall)
+                    ScoopUninstall -Module $module -Tag ([Modules]::scoop_uninstall)
                 }
                 elseif ($containsExtraInstall) {
                     if ([string]::IsNullOrWhiteSpace($name)) {
-                        $name = [Keywords]::scoop_install_extras.ToString()
+                        $name = [Modules]::scoop_install_extras.ToString()
                     }
                     $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
                     scoop bucket add extras
-                    ScoopInstall -TaskDef $def -Tag ([Keywords]::scoop_install_extras)
+                    ScoopInstall -Module $module -Tag ([Modules]::scoop_install_extras)
                 }
                 else {
                     $marker = "*" * ($lineWidth - "skipped: TASK [$role : $name]".Length)
                     $def.Remove("name")
-                    throw "Invalid module `"$($def.Keys)`"spacified"
+                    throw "Invalid module `"$($module.Keys)`"spacified"
                     return 1
                 }
                 Write-Host ""
@@ -124,11 +124,11 @@ function RunMain {
 function ScoopInstall {
     [OutputType([int])]
     param(
-        [HashTable]$TaskDef,
-        [Keywords]$Tag
+        [HashTable]$Module,
+        [Modules]$Tag
     )
 
-    $def = $TaskDef["$Tag"]
+    $def = $Module["$Tag"]
     if ($null -eq $def) {
         return
     }
@@ -171,11 +171,11 @@ function ScoopInstall {
 function ScoopUninstall {
     [OutputType([int])]
     param(
-        [HashTable]$TaskDef,
-        [Keywords]$Tag
+        [HashTable]$Module,
+        [Modules]$Tag
     )
 
-    $def = $TaskDef["$Tag"]
+    $def = $Module["$Tag"]
     if ($null -eq $def) {
         return
     }
