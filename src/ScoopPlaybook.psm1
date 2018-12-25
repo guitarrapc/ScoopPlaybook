@@ -131,11 +131,11 @@ function ScoopInstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool]"
+                Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Require install"
                 Write-Host -ForeGroundColor Yellow $installed.Line
             }
             else {
-                Write-Host -ForeGroundColor Green "check: [${Tag}: $tool]"
+                Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already installed"
                 Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"
             }
         }
@@ -143,11 +143,11 @@ function ScoopInstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForegroundColor Yellow "changed: [${Tag}: $tool]"
+                Write-Host -ForegroundColor Yellow "changed: [${Tag}: $tool] => Require install"
                 scoop install $tool
             }
             else {
-                Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool]"
+                Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool] => Already installed, checking update"
                 scoop update $tool
             }
         }
@@ -176,11 +176,11 @@ function ScoopUninstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForeGroundColor Green "check: [${Tag}: $tool]"
+                Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already uninstalled"
                 Write-Verbose $installed.Line
             }
             else {
-                Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool]"
+                Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Require uninstall"
                 Write-Host -ForeGroundColor Yellow "$($installed.Line)$($output[$installed.LineNumber++])"
             }
         }
@@ -188,12 +188,11 @@ function ScoopUninstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForegroundColor Yellow "changed: [${Tag}: $tool]"
-                scoop install $tool
+                Write-Host -ForegroundColor Green "ok: [${Tag}: $tool] => Already uninstalled"
             }
             else {
-                Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool]"
-                scoop update $tool
+                Write-Host -ForeGroundColor Yellow "changed: [${Tag}: $tool] => Require uninstall"
+                scoop uninstall $tool
             }
          }
     }
