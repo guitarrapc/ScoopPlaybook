@@ -4,7 +4,9 @@ using namespace System.Collections.Generic
 # setup
 Set-StrictMode -Version Latest
 
-enum Modules {name; scoop_install; scoop_install_extras; }
+enum PlaybookKeys {name; roles; }
+enum ModuleParams {name}
+enum Modules {scoop_install; scoop_install_extras; }
 enum RunMode {check; run; update_scoop; }
 enum ModuleElement {name; state; }
 enum StateElement {present; absent; }
@@ -53,8 +55,8 @@ function RunMain {
         Write-Host "Nothing definied in $BaseYaml"
         return
     }
-    $playbookName = $definitions["name"]
-    $roles = $definitions["roles"].ToArray()
+    $playbookName = $definitions[$([PlaybookKeys]::name.ToString())]
+    $roles = $definitions[$([PlaybookKeys]::roles.ToString())].ToArray()
     if ($null -eq $roles) {
         Write-Host "No roles definied in $BaseYaml"
         return
@@ -83,8 +85,8 @@ function RunMain {
         
             # Handle Module
             foreach ($module in $taskDef) {
-                $name = $module["name"]
-                $module.Remove("name")
+                $name = $module[$([ModuleParams]::name.ToString())]
+                $module.Remove($([ModuleParams]::name.ToString()))
 
                 # check which module
                 $containsInstall = $module.Contains([Modules]::scoop_install.ToString())
