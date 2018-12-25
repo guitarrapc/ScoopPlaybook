@@ -6,6 +6,8 @@ Set-StrictMode -Version Latest
 
 enum Keywords {name; scoop_install; scoop_uninstall; scoop_install_extras; }
 enum RunMode {check; run; update_scoop; }
+enum RoleElement {name; state;}
+enum StateElement {present; absent;}
 
 [RunMode]$script:modeType = [RunMode]::run
 $lineWidth = 83
@@ -20,7 +22,7 @@ function Prerequisites {
         return $true
     }
     else {
-        Write-Error "scoop not exists in PATH!!"
+        throw "scoop not exists in PATH!!"
         return $false
     }
     
@@ -60,9 +62,9 @@ function RunMain {
     $marker = "*" * ($lineWidth - "PLAY [$playbookName]".Length)
     Write-Host "PLAY [$playbookName] $marker"
     Write-Host ""
-    foreach ($item in $roles) {
-        Write-Verbose "Checking role definition from [$basePath/roles/$item/tasks/]"
-        $tasks = Get-ChildItem -LiteralPath "$basePath/roles/$item/tasks/" -Include *.yml -File
+    foreach ($role in $roles) {
+        Write-Verbose "Checking role definition from [$basePath/roles/$role/tasks/]"
+        $tasks = Get-ChildItem -LiteralPath "$basePath/roles/$role/tasks/" -Include *.yml -File
         if ($null -eq $tasks) {
             continue
         }
@@ -74,7 +76,7 @@ function RunMain {
 
             # role
             foreach ($def in $taskDef) {
-                $name = $def.name
+                $name = $def["name"]
                 # task contains "scoop_install" check
                 $containsInstall = $def.Contains([Keywords]::scoop_install.ToString())
                 # task contains "scoop_uninstall" check
@@ -83,25 +85,35 @@ function RunMain {
                 $containsExtraInstall = $def.Contains([Keywords]::scoop_install_extras.ToString())
 
                 if ($containsInstall) {
-                    $marker = "*" * ($lineWidth - "TASK [$item : $name]".Length)
-                    Write-Host "TASK [$item : $name] $marker"
+                    if ([string]::IsNullOrWhiteSpace($name)) {
+                        $name = [Keywords]::scoop_install.ToString()
+                    }
+                    $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
+                    Write-Host "TASK [$role : $name] $marker"
                     ScoopInstall -TaskDef $def -Tag ([Keywords]::scoop_install)
                 }
                 elseif ($containsUninstall) {
-                    $marker = "*" * ($lineWidth - "TASK [$item : $name]".Length)
-                    Write-Host "TASK [$item : $name] $marker"
+                    if ([string]::IsNullOrWhiteSpace($name)) {
+                        $name = [Keywords]::scoop_uninstall.ToString()
+                    }
+                    $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
+                    Write-Host "TASK [$role : $name] $marker"
                     ScoopUninstall -TaskDef $def -Tag ([Keywords]::scoop_uninstall)
                 }
                 elseif ($containsExtraInstall) {
-                    $marker = "*" * ($lineWidth - "TASK [$item : $name]".Length)
-                    Write-Host "TASK [$item : $name] $marker"
+                    if ([string]::IsNullOrWhiteSpace($name)) {
+                        $name = [Keywords]::scoop_install_extras.ToString()
+                    }
+                    $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
+                    Write-Host "TASK [$role : $name] $marker"
                     scoop bucket add extras
                     ScoopInstall -TaskDef $def -Tag ([Keywords]::scoop_install_extras)
                 }
                 else {
-                    $marker = "*" * ($lineWidth - "skipped: TASK [$item : $name]".Length)
-                    Write-Host DarkCyan "skipped: TASK [$item : $name] $marker"
-                    continue
+                    $marker = "*" * ($lineWidth - "skipped: TASK [$role : $name]".Length)
+                    $def.Remove("name")
+                    throw "Invalid module `"$($def.Keys)`"spacified"
+                    return 1
                 }
                 Write-Host ""
             }
@@ -116,10 +128,12 @@ function ScoopInstall {
         [Keywords]$Tag
     )
 
-    $tools = $TaskDef["$Tag"]
-    if ($null -eq $tools) {
+    $def = $TaskDef["$Tag"]
+    if ($null -eq $def) {
         return
     }
+    
+    $tools = $def[$([RoleElement]::name.ToString())]
 
     foreach ($tool in $tools) {
         # blank definition
@@ -161,10 +175,12 @@ function ScoopUninstall {
         [Keywords]$Tag
     )
 
-    $tools = $TaskDef["$Tag"]
-    if ($null -eq $tools) {
+    $def = $TaskDef["$Tag"]
+    if ($null -eq $def) {
         return
     }
+
+    $tools = $def[$([RoleElement]::name.ToString())]
 
     foreach ($tool in $tools) {
         # blank definition
