@@ -1,22 +1,13 @@
 #Requires -Version 5.1
 using namespace System.Collections.Generic
 
-[CmdletBinding()]
-param (
-    [ValidateSet("run", "check", "update_scoop")]
-    [string]$Mode = "run"
-)
-
+# setup
 Set-StrictMode -Version Latest
 
 enum Keywords {name; scoop_install; scoop_uninstall; scoop_install_extras; }
 enum RunMode {check; run; update_scoop; }
 
-# setup
-[RunMode]$modeType = $Mode
-if ($modeType -eq [RunMode]::check) {
-    Write-Host -ForeGroundColor Yellow "Run with $Mode mode"
-}
+[RunMode]$script:modeType = [RunMode]::run
 $lineWidth = 83
 
 function Prerequisites {
@@ -136,24 +127,22 @@ function ScoopInstall {
             continue
         }
 
-        if ($modeType -eq [RunMode]::check) {
-            Write-Host "check: [${Tag}: $tool]"
+        if ($script:modeType -eq [RunMode]::check) {
             $output = scoop info $tool
-            $installedLine = $output -match "Installed"
-            if ($installedLine -match "No") {
-                Write-Host -ForeGroundColor Yellow "$installedLine"
-            }
-            elseif ($installedLine -match "Yes") {
-                Write-Host -ForeGroundColor DarkGray "$installedLine"
+            $installed = $output | Select-String -Pattern "Installed:"
+            if ($installed.Line -match "no") {
+                Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool]"
+                Write-Host -ForeGroundColor Yellow $installed.Line
             }
             else {
-                return 1
+                Write-Host -ForeGroundColor Green "check: [${Tag}: $tool]"
+                Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"
             }
         }
         else {
             $output = scoop info $tool
-            $installedLine = $output -match "Installed"
-            if ($installedLine -match "No") {
+            $installed = $output | Select-String -Pattern "Installed:"
+            if ($installed.Line -match "no") {
                 Write-Host -ForegroundColor Yellow "changed: [$([Keywords]::scoop_install): $tool]"
                 scoop install $tool
             }
@@ -183,18 +172,16 @@ function ScoopUninstall {
             continue
         }
 
-        if ($modeType -eq [RunMode]::check) {
-            Write-Host "check: [${Tag}: $tool]"
+        if ($script:modeType -eq [RunMode]::check) {
             $output = scoop info $tool
-            $installedLine = $output -match "Installed"
-            if ($installedLine -match "Yes") {
-                Write-Host -ForeGroundColor Yellow "$installedLine"
-            }
-            elseif ($installedLine -match "No") {
-                Write-Host -ForeGroundColor Green "$installedLine"
+            $installed = $output | Select-String -Pattern "Installed:"
+            if ($installed.Line -match "no") {
+                Write-Host -ForeGroundColor Green "check: [${Tag}: $tool]"
+                Write-Verbose $installed.Line
             }
             else {
-                return 1
+                Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool]"
+                Write-Host -ForeGroundColor Yellow "$($installed.Line)$($output[$installed.LineNumber++])"
             }
         }
         else {
@@ -210,8 +197,18 @@ function Invoke-ScoopPlaybook {
     param(
         [Parameter(Mandatory = $false)]
         [Alias("FullName", "Path", "PSPath")]
-        $LiteralPath = "./site.yml"
+        $LiteralPath = "./site.yml",
+
+        [ValidateSet("run", "check", "update_scoop")]
+        [RunMode]$Mode = [RunMode]::run
     )
+
+    # setup
+    $script:modeType = $Mode
+    if ($script:modeType -eq [RunMode]::check) {
+        Write-Host -ForeGroundColor Yellow "Run with $Mode mode"
+    }
+
     # prerequisites
     if ($Mode -eq [RunMode]::update_scoop.ToString()) {
         scoop update
