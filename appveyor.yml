@@ -16,6 +16,7 @@ environment:
 install:
   - pwsh --version
   - pwsh -command Install-Module Pester -Scope CurrentUser
+  - pwsh -command Install-Module PowerShell-Yaml -Scope CurrentUser
 
 build: off
 

@@ -216,4 +216,3 @@ Describe "Invoke-ScoopPlaybook : run" {
 }
 
 Remove-Module ScoopPlaybook -Force
-
