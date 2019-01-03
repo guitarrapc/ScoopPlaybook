@@ -208,10 +208,10 @@ function ScoopInstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Require install ($($installed.Line))"
+                Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Require install $($installed.Line)"
             }
             else {
-                Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already installed ($($installed.Line))"
+                Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already installed $($output[$installed.LineNumber++])"
                 Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"
             }
         }
@@ -219,12 +219,12 @@ function ScoopInstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForegroundColor Yellow "changed: [${Tag}: $tool] => Require install ($($installed.Line))"
+                Write-Host -ForegroundColor Yellow "changed: [${Tag}: $tool] => Require install $($installed.Line)"
                 scoop install $tool
             }
             else {
-                Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool] => Already installed, checking update ($($installed.Line))"
-                scoop update $tool
+                Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool] => Already installed, checking update $($output[$installed.LineNumber++])"
+                scoop update $tool *>&1 | Where-Object {$_ -notmatch "Latest versions for all apps are installed"}
             }
         }
     }
