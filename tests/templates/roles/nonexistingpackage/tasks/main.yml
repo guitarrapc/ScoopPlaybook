@@ -1,0 +1,5 @@
+- name: "non exisiting package"
+  scoop_install:
+    state: present
+    name:
+      - xxxxxxxxxxxxxxx

@@ -1,4 +1,4 @@
-image: Ubuntu1804
+image: Visual Studio 2017
 version: '1.0.{build}'
 shallow_clone: false
 skip_branch_with_pr: true
@@ -25,6 +25,9 @@ build: off
 build_script:
   - docker run --rm -w /app -v "${APPVEYOR_BUILD_FOLDER}:/app" mcr.microsoft.com/powershell:6.1.0-ubuntu-18.04 pwsh -file ./build_psd1.ps1 -Version ${APPVEYOR_BUILD_VERSION} -TagVersion "${APPVEYOR_REPO_TAG_NAME}"
   - 7z a "${APPVEYOR_BUILD_FOLDER}/publish/ScoopPlaybook_${APPVEYOR_BUILD_VERSION}.zip" "${APPVEYOR_BUILD_FOLDER}/publish/ScoopPlaybook/"
+
+test_script:
+  - pwsh -command Invoke-Pester -CodeCoverage src/Utf8BomHeader.psm1
 
 deploy_script:
   - pwsh -file ./deploy_pagallery.ps1 -NuGetApiKey ${PS_GELLERY_RELEASE_API} -BuildBranch master -ModuleName ScoopPlaybook -TagVersion "${APPVEYOR_REPO_TAG_NAME}"

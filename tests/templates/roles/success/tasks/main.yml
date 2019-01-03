@@ -1,0 +1,5 @@
+- name: "success"
+  scoop_install:
+    state: present
+    name:
+      - time

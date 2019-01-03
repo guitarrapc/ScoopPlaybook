@@ -1,0 +1,5 @@
+- name: "absent"
+  scoop_install:
+    state: absent
+    name:
+      - time

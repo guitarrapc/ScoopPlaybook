@@ -4,69 +4,85 @@ using namespace System.Collections.Generic
 # setup
 Set-StrictMode -Version Latest
 
-enum PlaybookKeys {name; roles; }
-enum ModuleParams {name}
-enum Modules {scoop_install; scoop_install_extras; }
-enum RunMode {check; run; update_scoop; }
-enum ModuleElement {name; state; }
-enum StateElement {present; absent; }
+enum PlaybookKeys { name; roles; }
+enum ModuleParams { name}
+enum Modules { scoop_install; scoop_install_extras; }
+enum RunMode { check; run; }
+enum ModuleElement { name; state; }
+enum StateElement { present; absent; }
 
-[RunMode]$script:modeType = [RunMode]::run
 $lineWidth = 83
 
 function Prerequisites {
-    [OutputType([bool])]
+    [OutputType([void])]
     param ()
 
     # scoop status
     $pathExists = ($env:PATH -split ";") | Where-Object {$_ -match "scoop"} | Measure-Object
-    if ($pathExists.Count -gt 0) {
-        return $true
+    if ($pathExists.Count -eq 0) {
+        throw "scoop not exists in PATH! Make sure you have installed scoop. see https://scoop.sh/"
     }
-    else {
-        throw "scoop not exists in PATH!!"
-        return $false
-    }
-    
-    # status
-    scoop status
-    if (!$?) {
-        return $false
+}
+
+function RuntimeCheck {
+    [OutputType([bool])]
+    param (
+        [bool]$UpdateScoop = $false
+    )
+
+    # scoop status check
+    if ($UpdateScoop) {
+        $status = scoop status *>&1
+        if (!$?) {
+            return $false
+        }
+        if ($status -match 'scoop update') {
+            scoop update
+        }
     }
 
     # check potential problem
-    scoop checkup
+    $result = scoop checkup *>&1
+    if ($result -match "No problems") {
+        return $true
+    }
+    else {
+        return $false
+    }
 }
 
 function RunMain {
     [OutputType([int])]
     param(
-        [string]$BaseYaml = "site.yml"
+        [string]$BaseYaml = "site.yml",
+        [RunMode]$Mode = [RunMode]::run
     )
     
+    # Verify Playbook exists
     if (!(Test-Path $BaseYaml)) {
         throw [System.IO.FileNotFoundException]::New("File not found. $BaseYaml")
     }
-    
-    # Handle Playbook
+    # Verify Playbook is not empty
     $basePath = [System.IO.Path]::GetDirectoryName($BaseYaml)
     $definitions = Get-Content -LiteralPath $BaseYaml -Raw | ConvertFrom-Yaml
     if ($null -eq $definitions) {
         Write-Host "Nothing definied in $BaseYaml"
-        return
+        return 0
     }
-    $playbookName = $definitions[$([PlaybookKeys]::name.ToString())]
-    $roles = $definitions[$([PlaybookKeys]::roles.ToString())].ToArray()
-    if ($null -eq $roles) {
+    # Verify Playbook contains roles section
+    if ($null -eq $definitions[$([PlaybookKeys]::roles.ToString())]) {
         Write-Host "No roles definied in $BaseYaml"
-        return
+        return 0
     }
 
+    # Header
+    $playbookName = $definitions[$([PlaybookKeys]::name.ToString())]
     $marker = "*" * ($lineWidth - "PLAY [$playbookName]".Length)
     Write-Host "PLAY [$playbookName] $marker"
     Write-Host ""
 
-    # Handle Role
+    # Handle each role
+    $roles = $definitions[$([PlaybookKeys]::roles.ToString())].ToArray()
     foreach ($role in $roles) {
         Write-Verbose "Checking role definition from [$basePath/roles/$role/tasks/]"
         $tasks = Get-ChildItem -LiteralPath "$basePath/roles/$role/tasks/" -Include *.yml -File
@@ -74,7 +90,7 @@ function RunMain {
             continue
         }
 
-        # Handle Task
+        # Handle each task
         foreach ($task in $tasks.FullName) {
             Write-Verbose "Read from [$task]"
             $taskDef = Get-Content -LiteralPath $task -Raw | ConvertFrom-Yaml
@@ -83,7 +99,7 @@ function RunMain {
                 continue
             }
         
-            # Handle Module
+            # Handle each module
             foreach ($module in $taskDef) {
                 $name = $module[$([ModuleParams]::name.ToString())]
                 $module.Remove($([ModuleParams]::name.ToString()))
@@ -100,7 +116,7 @@ function RunMain {
                     }
                     $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
-                    ScoopStateHandler -Module $module -Tag $tag
+                    ScoopStateHandler -Module $module -Tag $tag -Mode $Mode
                 }
                 elseif ($containsExtraInstall) {
                     # handle scoop_install_extras
@@ -110,7 +126,7 @@ function RunMain {
                     }
                     $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
-                    ScoopStateHandler -Module $module -Tag $tag
+                    ScoopStateHandler -Module $module -Tag $tag -Mode $Mode
                 }
                 else {
                     $marker = "*" * ($lineWidth - "skipped: TASK [$role : $name]".Length)
@@ -121,20 +137,24 @@ function RunMain {
                     }
                     else {    
                         throw "Invalid key spacified in module `"$($module.Keys -join ',')`""
-                        return 1
                     }
                 }
                 Write-Host ""
             }
         }
     }
+    return 0
 }
 
 function ScoopStateHandler {
     [OutputType([int])]
     param(
+        [Parameter(Mandatory = $true)]
         [HashTable]$Module,
-        [Modules]$Tag
+        [Parameter(Mandatory = $true)]
+        [Modules]$Tag,
+        [Parameter(Mandatory = $true)]
+        [RunMode]$Mode
     )
 
     $moduleDetail = $module["$tag"]
@@ -152,12 +172,13 @@ function ScoopStateHandler {
         $state = [StateElement]::present
     }
 
+    $dryRun = $Mode -eq [RunMode]::check
     switch ($state) {
         $([StateElement]::present) {
-            ScoopInstall -Module $moduleDetail -Tag $tag
+            ScoopInstall -Module $moduleDetail -Tag $tag -DryRun $dryRun
         }
         $([StateElement]::absent) {
-            ScoopUninstall -Module $moduleDetail -Tag $tag
+            ScoopUninstall -Module $moduleDetail -Tag $tag -DryRun $dryRun
         }
     }
 }
@@ -165,8 +186,12 @@ function ScoopStateHandler {
 function ScoopInstall {
     [OutputType([int])]
     param(
+        [Parameter(Mandatory = $true)]
         [HashTable]$Module,
-        [Modules]$Tag
+        [Parameter(Mandatory = $true)]
+        [Modules]$Tag,
+        [Parameter(Mandatory = $true)]
+        [bool]$DryRun
     )
    
     $tools = $Module[$([ModuleElement]::name.ToString())]
@@ -179,15 +204,14 @@ function ScoopInstall {
     }
 
     foreach ($tool in $tools) {
-        if ($script:modeType -eq [RunMode]::check) {
+        if ($DryRun) {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Require install"
-                Write-Host -ForeGroundColor Yellow $installed.Line
+                Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Require install ($($installed.Line))"
             }
             else {
-                Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already installed"
+                Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already installed ($($installed.Line))"
                 Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"
             }
         }
@@ -195,11 +219,11 @@ function ScoopInstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForegroundColor Yellow "changed: [${Tag}: $tool] => Require install"
+                Write-Host -ForegroundColor Yellow "changed: [${Tag}: $tool] => Require install ($($installed.Line))"
                 scoop install $tool
             }
             else {
-                Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool] => Already installed, checking update"
+                Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool] => Already installed, checking update ($($installed.Line))"
                 scoop update $tool
             }
         }
@@ -209,8 +233,12 @@ function ScoopInstall {
 function ScoopUninstall {
     [OutputType([int])]
     param(
+        [Parameter(Mandatory = $true)]
         [HashTable]$Module,
-        [Modules]$Tag
+        [Parameter(Mandatory = $true)]
+        [Modules]$Tag,
+        [Parameter(Mandatory = $true)]
+        [bool]$DryRun
     )
 
     $tools = $Module[$([ModuleElement]::name.ToString())]
@@ -221,7 +249,7 @@ function ScoopUninstall {
     }
 
     foreach ($tool in $tools) {
-        if ($script:modeType -eq [RunMode]::check) {
+        if ($DryRun) {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
@@ -253,31 +281,28 @@ function Invoke-ScoopPlaybook {
     param(
         [Parameter(Mandatory = $false)]
         [Alias("FullName", "Path", "PSPath")]
-        $LiteralPath = "./site.yml",
-
-        [ValidateSet("run", "check", "update_scoop")]
+        [string]$LiteralPath = "./site.yml",
         [RunMode]$Mode = [RunMode]::run
     )
 
     # setup
-    $script:modeType = $Mode
-    if ($script:modeType -eq [RunMode]::check) {
+    if ($Mode -eq [RunMode]::check) {
         Write-Host -ForeGroundColor Yellow "Run with $Mode mode"
     }
 
     # prerequisites
-    if ($Mode -eq [RunMode]::update_scoop.ToString()) {
-        scoop update
-    }
-    else {
-        $ok = Prerequisites
-        if (!$?) { return 1 }
-        if (!$ok) { return 1 }
-    
-        # run
-        RunMain -BaseYaml $LiteralPath
-    }
+    Prerequisites
+    if (!$?) { return 1 }
+
+    # update
+    $updateScoop = !($Mode -eq [RunMode]::check)
+    $ok = RuntimeCheck -UpdateScoop $updateScoop
+    if (!$?) { return 1 }
+    if (!$ok) { return 1 }
+
+    # run
+    RunMain -BaseYaml $LiteralPath -Mode $Mode
 }
 
 Set-Alias -Name Scoop-Playbook -Value Invoke-ScoopPlaybook
-Export-ModuleMember -Function Invoke-ScoopPlaybook -Alias Scoop-Playbook
+Export-ModuleMember -Function * -Alias Scoop-Playbook
