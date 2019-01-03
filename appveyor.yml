@@ -16,14 +16,10 @@ environment:
 install:
   - pwsh --version
 
-before_build:
-  - docker pull mcr.microsoft.com/powershell:6.1.0-ubuntu-18.04
-  - docker image ls
-
 build: off
 
 build_script:
-  - docker run --rm -w /app -v "${APPVEYOR_BUILD_FOLDER}:/app" mcr.microsoft.com/powershell:6.1.0-ubuntu-18.04 pwsh -file ./build_psd1.ps1 -Version ${APPVEYOR_BUILD_VERSION} -TagVersion "${APPVEYOR_REPO_TAG_NAME}"
+  - pwsh -file ./build_psd1.ps1 -Version ${APPVEYOR_BUILD_VERSION} -TagVersion "${APPVEYOR_REPO_TAG_NAME}"
   - 7z a "${APPVEYOR_BUILD_FOLDER}/publish/ScoopPlaybook_${APPVEYOR_BUILD_VERSION}.zip" "${APPVEYOR_BUILD_FOLDER}/publish/ScoopPlaybook/"
 
 test_script:
