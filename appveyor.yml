@@ -19,15 +19,15 @@ install:
 build: off
 
 build_script:
-  - pwsh -file ./build_psd1.ps1 -Version ${APPVEYOR_BUILD_VERSION} -TagVersion "${APPVEYOR_REPO_TAG_NAME}"
-  - 7z a "${APPVEYOR_BUILD_FOLDER}/publish/ScoopPlaybook_${APPVEYOR_BUILD_VERSION}.zip" "${APPVEYOR_BUILD_FOLDER}/publish/ScoopPlaybook/"
+  - pwsh -file ./build_psd1.ps1 -Version %APPVEYOR_BUILD_VERSION% -TagVersion "%APPVEYOR_REPO_TAG_NAME%"
+  - 7z a "%APPVEYOR_BUILD_FOLDER%/publish/ScoopPlaybook_%APPVEYOR_BUILD_VERSION%.zip" "%APPVEYOR_BUILD_FOLDER%/publish/ScoopPlaybook/"
 
 test_script:
   - pwsh -command Invoke-Pester -CodeCoverage src/Utf8BomHeader.psm1
 
 deploy_script:
-  - pwsh -file ./deploy_pagallery.ps1 -NuGetApiKey ${PS_GELLERY_RELEASE_API} -BuildBranch master -ModuleName ScoopPlaybook -TagVersion "${APPVEYOR_REPO_TAG_NAME}"
+  - pwsh -file ./deploy_pagallery.ps1 -NuGetApiKey %PS_GELLERY_RELEASE_API% -BuildBranch master -ModuleName ScoopPlaybook -TagVersion "%APPVEYOR_REPO_TAG_NAME%"
 
 artifacts:
-  - path: ./publish/ScoopPlaybook_${APPVEYOR_BUILD_VERSION}.zip
-    name: ScoopPlaybook_${APPVEYOR_BUILD_VERSION}
+  - path: ./publish/ScoopPlaybook_%APPVEYOR_BUILD_VERSION%.zip
+    name: ScoopPlaybook_%APPVEYOR_BUILD_VERSION%
