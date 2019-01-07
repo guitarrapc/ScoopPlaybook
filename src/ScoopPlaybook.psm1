@@ -128,7 +128,7 @@ function RunMain {
                     }
                     # install extras bucket
                     $buckets = scoop bucket list
-                    if ($buckets -notmatch "extras") {
+                    if (($null -eq $buckets) -or ($buckets -notmatch "extras")) {
                         scoop bucket add extras
                     }
 
