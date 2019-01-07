@@ -34,6 +34,7 @@ function RuntimeCheck {
     if ($UpdateScoop) {
         $status = scoop status *>&1
         if (!$?) {
+            Write-Host -ForeGroundColor Red $status
             return $false
         }
         if ($status -match 'scoop update') {
@@ -47,6 +48,7 @@ function RuntimeCheck {
         return $true
     }
     else {
+        Write-Host -ForeGroundColor Red $result
         return $false
     }
 }
