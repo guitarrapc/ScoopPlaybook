@@ -126,6 +126,12 @@ function RunMain {
                     if ([string]::IsNullOrWhiteSpace($name)) {
                         $name = $tag.ToString()
                     }
+                    # install extras bucket
+                    $buckets = scoop bucket list
+                    if ($buckets -notmatch "extras") {
+                        scoop bucket add extras
+                    }
+
                     $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
                     ScoopStateHandler -Module $module -Tag $tag -Mode $Mode
