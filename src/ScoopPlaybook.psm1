@@ -34,6 +34,7 @@ function RuntimeCheck {
     if ($UpdateScoop) {
         $status = scoop status *>&1
         if (!$?) {
+            Write-Host -ForeGroundColor Red $status
             return $false
         }
         if ($status -match 'scoop update') {
@@ -47,6 +48,7 @@ function RuntimeCheck {
         return $true
     }
     else {
+        Write-Host -ForeGroundColor Red $result
         return $false
     }
 }
@@ -124,6 +126,12 @@ function RunMain {
                     if ([string]::IsNullOrWhiteSpace($name)) {
                         $name = $tag.ToString()
                     }
+                    # install extras bucket
+                    $buckets = scoop bucket list
+                    if (($null -eq $buckets) -or ($buckets -notmatch "extras")) {
+                        scoop bucket add extras
+                    }
+
                     $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
                     ScoopStateHandler -Module $module -Tag $tag -Mode $Mode

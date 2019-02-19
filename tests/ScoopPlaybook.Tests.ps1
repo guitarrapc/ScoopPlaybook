@@ -72,6 +72,14 @@ InModuleScope "ScoopPlaybook" {
             $env:PATH = $org
             $env:SCOOP = ""
         }
+        It "no bucket exists" {
+            $buckets = ""
+            ($null -eq $buckets) -or ($buckets -notmatch "extras") | Should -Be $true
+        }
+        It "extras bucket exists" {
+            $buckets = "extras"
+            ($null -eq $buckets) -or ($buckets -notmatch "extras") | Should -Be $false
+        }
         foreach ($mode in "run", "check") {
             $env:Mode = $mode
             It "not existing playbook should throw" {
