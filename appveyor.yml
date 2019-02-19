@@ -25,7 +25,7 @@ build_script:
   - 7z a "%APPVEYOR_BUILD_FOLDER%/publish/ScoopPlaybook_%APPVEYOR_BUILD_VERSION%.zip" "%APPVEYOR_BUILD_FOLDER%/publish/ScoopPlaybook/"
 
 test_script:
-  - pwsh -command Invoke-Pester -CodeCoverage src/ScoopPlaybook.psm1
+  - pwsh -command "Invoke-Pester -CodeCoverage src/ScoopPlaybook.psm1; $LASTEXITCODE"
 
 deploy_script:
   - pwsh -file ./deploy_pagallery.ps1 -NuGetApiKey %PS_GELLERY_RELEASE_API% -BuildBranch master -ModuleName ScoopPlaybook -TagVersion "%APPVEYOR_REPO_TAG_NAME%"
