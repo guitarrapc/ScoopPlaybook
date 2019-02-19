@@ -54,6 +54,7 @@ function RuntimeCheck {
 }
 
 function RunMain {
+    [CmdletBinding()]
     [OutputType([int])]
     param(
         [string]$BaseYaml = "site.yml",
@@ -155,6 +156,7 @@ function RunMain {
 }
 
 function ScoopStateHandler {
+    [CmdletBinding()]
     [OutputType([int])]
     param(
         [Parameter(Mandatory = $true)]
@@ -192,6 +194,7 @@ function ScoopStateHandler {
 }
 
 function ScoopInstall {
+    [CmdletBinding()]
     [OutputType([int])]
     param(
         [Parameter(Mandatory = $true)]
@@ -219,14 +222,14 @@ function ScoopInstall {
                 Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Require install $($installed.Line)"
             }
             else {
-                $outputStrict = scoop list $tool
-                $installedStrictCheck = $outputStrict | Select-String -Pattern " $tool "
-                if ($installedStrictCheck.Line -match "*failed") {
+                $outputStrict = scoop list $tool *>&1
+                $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
+                if ($null -ne $installedStrictCheck) {
                     # previous installation was interupped
-                    Write-Host -ForeGroundColor Red "check: [${Tag}: $tool] => Failed previous installation $($installedStrictCheck.Line)"
+                    Write-Host -ForeGroundColor Red "check: [${Tag}: $tool] => Failed previous installation $($outputStrict | Select-Object -Skip 1)"
                 }
                 else {
-                    Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already installed $($installedStrictCheck.Line)"
+                    Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already installed $($outputStrict | Select-Object -Skip 1)"
                     Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"                        
                 }
             }
@@ -239,16 +242,16 @@ function ScoopInstall {
                 scoop install $tool
             }
             else {
-                $outputStrict = scoop list $tool
-                $installedStrictCheck = $outputStrict | Select-String -Pattern " $tool "
-                if ($installedStrictCheck.Line -match "*failed") {
+                $outputStrict = scoop list $tool *>&1
+                $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
+                if ($null -ne $installedStrictCheck) {
                     # previous installation was interupped
-                    Write-Host -ForeGroundColor Red "reinstall: [${Tag}: $tool] => Failed previous installation, reinstall require install $($installedStrictCheck.Line)"
+                    Write-Host -ForeGroundColor Red "changed: [${Tag}: $tool] => Failed previous installation, reinstall require install $($outputStrict | Select-Object -Skip 1)"
                     scoop uninstall $tool
                     scoop install $tool
                 }
                 else {
-                    Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool] => Already installed, checking update $($installedStrictCheck.Line)"
+                    Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool] => Already installed, checking update $($outputStrict | Select-Object -Skip 1)"
                     scoop update $tool *>&1 | Where-Object {$_ -notmatch "Latest versions for all apps are installed"}
                 }
             }
