@@ -226,7 +226,7 @@ function ScoopInstall {
                 $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
                 if ($null -ne $installedStrictCheck) {
                     # previous installation was interupped
-                    Write-Host -ForeGroundColor Red "check: [${Tag}: $tool] => Failed previous installation $($outputStrict | Select-Object -Skip 1)"
+                    Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Failed previous installation. $($outputStrict | Select-Object -Skip 1)"
                 }
                 else {
                     Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already installed $($outputStrict | Select-Object -Skip 1)"
@@ -246,7 +246,7 @@ function ScoopInstall {
                 $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
                 if ($null -ne $installedStrictCheck) {
                     # previous installation was interupped
-                    Write-Host -ForeGroundColor Red "changed: [${Tag}: $tool] => Failed previous installation, reinstall require install $($outputStrict | Select-Object -Skip 1)"
+                    Write-Host -ForeGroundColor Yellow "changed: [${Tag}: $tool] => Failed previous installation, start reinstall. $($outputStrict | Select-Object -Skip 1)"
                     scoop uninstall $tool
                     scoop install $tool
                 }
