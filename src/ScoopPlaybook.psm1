@@ -85,7 +85,7 @@ function RunMain {
     Write-Host ""
 
     # Handle each role
-    $roles = $definitions[$([PlaybookKeys]::roles.ToString())].ToArray()
+    $roles = @($definitions[$([PlaybookKeys]::roles.ToString())])
     foreach ($role in $roles) {
         Write-Verbose "Checking role definition from [$basePath/roles/$role/tasks/]"
         $tasks = Get-ChildItem -LiteralPath "$basePath/roles/$role/tasks/" -Include *.yml -File
