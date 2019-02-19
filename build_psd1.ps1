@@ -6,11 +6,21 @@ param (
 )
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $path = "$here/src/ScoopPlaybook.psd1"
-$guid = "38ac9351-b293-4166-9ae5-13dd349d6ad6"
 $publish = "./publish/ScoopPlaybook"
 
 # setup
-function Update([string]$Path, [string]$Version, [string]$Guid) {
+function Update([string]$Path, [string]$Version) {
+    $params = @{
+        Path              = $Path
+        ModuleVersion     = $Version
+        FunctionsToExport = ("Invoke-ScoopPlaybook")
+        AliasesToExport   = ("Scoop-Playbook")
+        ReleaseNotes      = "https://github.com/guitarrapc/ScoopPlaybook/releases/tag/$Version"
+    }
+    Update-ModuleManifest @params
+}
+
+function GenManifest([string]$Path, [string]$Guid, [string]$Version) {
     $params = @{
         Path                 = $Path
         Guid                 = $Guid
@@ -57,6 +67,6 @@ if (Test-Path $path) {
 }
 
 # run
-Update -Path $path -Version $Version -Guid $Guid
+Update -Path $path -Version $Version
 Prepare -Path ./publish/ScoopPlaybook
 Copy-Item -Path src/*, *.md -Destination "$publish/"

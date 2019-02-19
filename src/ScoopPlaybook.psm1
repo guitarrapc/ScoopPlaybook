@@ -211,8 +211,16 @@ function ScoopInstall {
                 Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Require install $($installed.Line)"
             }
             else {
-                Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already installed $($output[$installed.LineNumber++])"
-                Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"
+                $outputStrict = scoop list $tool
+                $installedStrictCheck = $outputStrict | Select-String -Pattern " $tool "
+                if ($installedStrictCheck.Line -match "*failed") {
+                    # previous installation was interupped
+                    Write-Host -ForeGroundColor Red "check: [${Tag}: $tool] => Failed previous installation $($installedStrictCheck.Line)"
+                }
+                else {
+                    Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already installed $($installedStrictCheck.Line)"
+                    Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"                        
+                }
             }
         }
         else {
@@ -223,8 +231,18 @@ function ScoopInstall {
                 scoop install $tool
             }
             else {
-                Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool] => Already installed, checking update $($output[$installed.LineNumber++])"
-                scoop update $tool *>&1 | Where-Object {$_ -notmatch "Latest versions for all apps are installed"}
+                $outputStrict = scoop list $tool
+                $installedStrictCheck = $outputStrict | Select-String -Pattern " $tool "
+                if ($installedStrictCheck.Line -match "*failed") {
+                    # previous installation was interupped
+                    Write-Host -ForeGroundColor Red "reinstall: [${Tag}: $tool] => Failed previous installation, reinstall require install $($installedStrictCheck.Line)"
+                    scoop uninstall $tool
+                    scoop install $tool
+                }
+                else {
+                    Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool] => Already installed, checking update $($installedStrictCheck.Line)"
+                    scoop update $tool *>&1 | Where-Object {$_ -notmatch "Latest versions for all apps are installed"}
+                }
             }
         }
     }
