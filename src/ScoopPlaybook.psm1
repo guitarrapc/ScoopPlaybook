@@ -2,6 +2,7 @@
 using namespace System.Collections.Generic
 
 # setup
+$ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 enum PlaybookKeys { name; roles; }
@@ -25,7 +26,7 @@ function Prerequisites {
 }
 
 function RuntimeCheck {
-    [OutputType([bool])]
+    [OutputType([void])]
     param (
         [bool]$UpdateScoop = $false
     )
@@ -34,8 +35,7 @@ function RuntimeCheck {
     if ($UpdateScoop) {
         $status = scoop status *>&1
         if (!$?) {
-            Write-Host -ForeGroundColor Red $status
-            return $false
+            throw $status
         }
         if ($status -match 'scoop update') {
             scoop update
@@ -44,12 +44,8 @@ function RuntimeCheck {
 
     # check potential problem
     $result = scoop checkup *>&1
-    if ($result -match "No problems") {
-        return $true
-    }
-    else {
-        Write-Host -ForeGroundColor Red $result
-        return $false
+    if ($result -notmatch "No problems") {
+        throw $result
     }
 }
 
@@ -70,12 +66,12 @@ function RunMain {
     $definitions = Get-Content -LiteralPath $BaseYaml -Raw | ConvertFrom-Yaml
     if ($null -eq $definitions) {
         Write-Host "Nothing definied in $BaseYaml"
-        return 0
+        return
     }
     # Verify Playbook contains roles section
     if ($null -eq $definitions[$([PlaybookKeys]::roles.ToString())]) {
         Write-Host "No roles definied in $BaseYaml"
-        return 0
+        return
     }
 
     # Header
@@ -139,14 +135,14 @@ function RunMain {
                         continue
                     }
                     else {
-                        throw "Invalid key spacified in module `"$($module.Keys -join ',')`""
+                        throw "error: Invalid key spacified in module `"$($module.Keys -join ',')`""
                     }
                 }
                 Write-Host ""
             }
         }
     }
-    return 0
+    return
 }
 
 function ScoopBucketStateHandler {
@@ -218,7 +214,7 @@ function ScoopModuleStateHandler {
         $moduleDetail.bucket = "main"
     }
     if (!(ScoopBucketExists -Bucket $moduleDetail.bucket)){
-        Write-Host -ForegroundColor Red "check: [${Tag}: $tool] => $($installed.Line) (Require install)"
+        throw "error: [${Tag}: $($moduleDetail.bucket)] => no matching bucket found."
     }
     
     # pick up state and switch to install/uninstall
@@ -422,21 +418,18 @@ function Invoke-ScoopPlaybook {
 
     # prerequisites
     Prerequisites
-    if (!$?) { return 1 }
 
     # update
     $updateScoop = !($Mode -eq [RunMode]::check)
     $ok = RuntimeCheck -UpdateScoop $updateScoop
-    if (!$?) { return 1 }
-    if (!$ok) { return 1 }
 
     # run
     try {
         RunMain -BaseYaml $LiteralPath -Mode $Mode
     }
     catch [Exception] {
-        Write-Host -ForeGroundColor Red "$_ $($_.GetType()) $($_.ScriptStackTrace)"
-        return 1
+        Write-Host -ForeGroundColor Yellow "ScriptStackTrace Detail: $($_.GetType()) $($_.ScriptStackTrace)"
+        throw
     }
 }
 
