@@ -6,7 +6,7 @@ Set-StrictMode -Version Latest
 
 enum PlaybookKeys { name; roles; }
 enum ModuleParams { name}
-enum Modules { scoop_install; scoop_install_extras; }
+enum Modules { scoop_install; scoop_bucket_install; }
 enum RunMode { check; run; }
 enum ModuleElement { name; state; }
 enum StateElement { present; absent; }
@@ -109,7 +109,7 @@ function RunMain {
 
                 # check which module
                 $containsInstall = $module.Contains([Modules]::scoop_install.ToString())
-                $containsExtraInstall = $module.Contains([Modules]::scoop_install_extras.ToString())
+                $containsBucketInstall = $module.Contains([Modules]::scoop_bucket_install.ToString())
 
                 if ($containsInstall) {
                     # handle scoop_install
@@ -119,23 +119,17 @@ function RunMain {
                     }
                     $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
-                    ScoopStateHandler -Module $module -Tag $tag -Mode $Mode
+                    ScoopModuleStateHandler -Module $module -Tag $tag -Mode $Mode
                 }
-                elseif ($containsExtraInstall) {
-                    # handle scoop_install_extras
-                    $tag = [Modules]::scoop_install_extras
+                elseif ($containsBucketInstall) {
+                    # handle scoop_bucket_install
+                    $tag = [Modules]::scoop_bucket_install
                     if ([string]::IsNullOrWhiteSpace($name)) {
                         $name = $tag.ToString()
                     }
-                    # install extras bucket
-                    $buckets = scoop bucket list
-                    if (($null -eq $buckets) -or ($buckets -notmatch "extras")) {
-                        scoop bucket add extras
-                    }
-
                     $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
-                    ScoopStateHandler -Module $module -Tag $tag -Mode $Mode
+                    ScoopBucketStateHandler -Module $module -Tag $tag -Mode $Mode
                 }
                 else {
                     $marker = "*" * ($lineWidth - "skipped: TASK [$role : $name]".Length)
@@ -144,7 +138,7 @@ function RunMain {
                         Write-Host -ForeGroundColor DarkGray "skipping, no module specified"
                         continue
                     }
-                    else {    
+                    else {
                         throw "Invalid key spacified in module `"$($module.Keys -join ',')`""
                     }
                 }
@@ -155,7 +149,7 @@ function RunMain {
     return 0
 }
 
-function ScoopStateHandler {
+function ScoopBucketStateHandler {
     [CmdletBinding()]
     [OutputType([int])]
     param(
@@ -167,7 +161,7 @@ function ScoopStateHandler {
         [RunMode]$Mode
     )
 
-    $moduleDetail = $module["$tag"]
+    $moduleDetail = $Module["$Tag"]
 
     # blank definition
     # hash table null should detect with string cast..... orz
@@ -176,6 +170,11 @@ function ScoopStateHandler {
         return
     }
 
+    # set default bucket
+    if ($null -eq $moduleDetail.bucket) {
+        $moduleDetail.bucket = "main"
+    }
+    
     # pick up state and switch to install/uninstall
     $state = $moduleDetail[$([ModuleElement]::state.ToString())]
     if ($null -eq $state) {
@@ -185,15 +184,15 @@ function ScoopStateHandler {
     $dryRun = $Mode -eq [RunMode]::check
     switch ($state) {
         $([StateElement]::present) {
-            ScoopInstall -Module $moduleDetail -Tag $tag -DryRun $dryRun
+            ScoopBucketInstall -Bucket $moduleDetail.bucket -Tag $Tag -DryRun $dryRun
         }
         $([StateElement]::absent) {
-            ScoopUninstall -Module $moduleDetail -Tag $tag -DryRun $dryRun
+            ScoopBucketUninstall -Bucket $moduleDetail.bucket -Tag $Tag -DryRun $dryRun
         }
     }
 }
 
-function ScoopInstall {
+function ScoopModuleStateHandler {
     [CmdletBinding()]
     [OutputType([int])]
     param(
@@ -202,34 +201,137 @@ function ScoopInstall {
         [Parameter(Mandatory = $true)]
         [Modules]$Tag,
         [Parameter(Mandatory = $true)]
-        [bool]$DryRun
+        [RunMode]$Mode
     )
-   
-    $tools = $Module[$([ModuleElement]::name.ToString())]
+
+    $moduleDetail = $Module["$Tag"]
 
     # blank definition
     # hash table null should detect with string cast..... orz
-    if ([string]::IsNullOrWhiteSpace($tools)) {
-        Write-Verbose "Skipping, missing any tools"
-        continue
+    if ([string]::IsNullOrWhiteSpace($moduleDetail)) {
+        Write-Verbose "no valid module defined"
+        return
     }
 
-    foreach ($tool in $tools) {
+    # install bucket
+    if ($null -eq $moduleDetail.bucket) {
+        $moduleDetail.bucket = "main"
+    }
+    if (!(ScoopBucketExists -Bucket $moduleDetail.bucket)){
+        Write-Host -ForegroundColor Red "check: [${Tag}: $tool] => $($installed.Line) (Require install)"
+    }
+    
+    # pick up state and switch to install/uninstall
+    $state = $moduleDetail[$([ModuleElement]::state.ToString())]
+    if ($null -eq $state) {
+        $state = [StateElement]::present
+    }
+
+    $dryRun = $Mode -eq [RunMode]::check
+    $tools = $moduleDetail[$([ModuleElement]::name.ToString())]
+    switch ($state) {
+        $([StateElement]::present) {
+            ScoopInstall -Tools $tools -Tag $Tag -DryRun $dryRun
+        }
+        $([StateElement]::absent) {
+            ScoopUninstall -Tools $tools -Tag $Tag -DryRun $dryRun
+        }
+    }
+}
+
+function ScoopBucketExists {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Bucket
+    )
+
+    $buckets = scoop bucket list
+    return ($null -ne $buckets) -and ($buckets -match $Bucket)
+}
+
+function ScoopBucketInstall {
+    [CmdletBinding()]
+    [OutputType([void])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Bucket,
+        [Parameter(Mandatory = $true)]
+        [Modules]$Tag,
+        [Parameter(Mandatory = $true)]
+        [bool]$DryRun
+    )
+
+    if (!(ScoopBucketExists -Bucket $Bucket)) {
+        if ($DryRun) {
+            Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $Bucket] => Require install"
+        }
+        else{
+            Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] => Require install"
+            scoop bucket add $Bucket
+        }
+    }
+    else {
+        Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $Bucket] => Already installed"
+    }
+}
+
+function ScoopBucketUninstall {
+    [CmdletBinding()]
+    [OutputType([void])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Bucket,
+        [Parameter(Mandatory = $true)]
+        [Modules]$Tag,
+        [Parameter(Mandatory = $true)]
+        [bool]$DryRun
+    )
+
+    $Buckets = scoop bucket list
+    if (ScoopBucketExists -Bucket $Bucket) {
+        if ($DryRun) {
+            Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $Bucket] => Require uninstall"
+        }
+        else{
+            Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] => Require uninstall"
+            scoop bucket rm $Bucket
+        }
+    }
+    else {
+        Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $Bucket] => Already uninstalled"
+    }
+}
+
+function ScoopInstall {
+    [CmdletBinding()]
+    [OutputType([int])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Tools,
+        [Parameter(Mandatory = $true)]
+        [Modules]$Tag,
+        [Parameter(Mandatory = $true)]
+        [bool]$DryRun
+    )
+   
+    foreach ($tool in $Tools) {
         if ($DryRun) {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Require install $($installed.Line)"
+                Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $tool] => $($installed.Line) (Require install)"
             }
             else {
                 $outputStrict = scoop list $tool *>&1
                 $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
                 if ($null -ne $installedStrictCheck) {
                     # previous installation was interupped
-                    Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Failed previous installation. $($outputStrict | Select-Object -Skip 1)"
+                    Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (Failed previous installation)"
                 }
                 else {
-                    Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already installed $($outputStrict | Select-Object -Skip 1)"
+                    Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (Already installed)"
                     Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"                        
                 }
             }
@@ -238,7 +340,7 @@ function ScoopInstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForegroundColor Yellow "changed: [${Tag}: $tool] => Require install $($installed.Line)"
+                Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $tool] => $($installed.Line) (Require install)"
                 scoop install $tool
             }
             else {
@@ -246,12 +348,12 @@ function ScoopInstall {
                 $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
                 if ($null -ne $installedStrictCheck) {
                     # previous installation was interupped
-                    Write-Host -ForeGroundColor Yellow "changed: [${Tag}: $tool] => Failed previous installation, start reinstall. $($outputStrict | Select-Object -Skip 1)"
+                    Write-Host -ForeGroundColor Yellow "  [!] changed: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (Failed previous installation, start reinstall.)"
                     scoop uninstall $tool
                     scoop install $tool
                 }
                 else {
-                    Write-Host -ForeGroundColor Green "ok: [${Tag}: $tool] => Already installed, checking update $($outputStrict | Select-Object -Skip 1)"
+                    Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (Already installed, checking update)"
                     scoop update $tool *>&1 | Where-Object {$_ -notmatch "Latest versions for all apps are installed"}
                 }
             }
@@ -263,14 +365,13 @@ function ScoopUninstall {
     [OutputType([int])]
     param(
         [Parameter(Mandatory = $true)]
-        [HashTable]$Module,
+        [string[]]$Tools,
         [Parameter(Mandatory = $true)]
         [Modules]$Tag,
         [Parameter(Mandatory = $true)]
         [bool]$DryRun
     )
 
-    $tools = $Module[$([ModuleElement]::name.ToString())]
     # blank definition
     if ([string]::IsNullOrWhiteSpace($tools)) {
         Write-Verbose "Skipping, missing any tools"
@@ -282,11 +383,11 @@ function ScoopUninstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForeGroundColor Green "check: [${Tag}: $tool] => Already uninstalled"
+                Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $tool] => Already uninstalled"
                 Write-Verbose $installed.Line
             }
             else {
-                Write-Host -ForeGroundColor Yellow "check: [${Tag}: $tool] => Require uninstall"
+                Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $tool] => Require uninstall"
                 Write-Host -ForeGroundColor Yellow "$($installed.Line)$($output[++$installed.LineNumber])"
             }
         }
@@ -294,10 +395,10 @@ function ScoopUninstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForegroundColor Green "ok: [${Tag}: $tool] => Already uninstalled"
+                Write-Host -ForegroundColor Green "  [o] skip: [${Tag}: $tool] => Already uninstalled"
             }
             else {
-                Write-Host -ForeGroundColor Yellow "changed: [${Tag}: $tool] => Require uninstall"
+                Write-Host -ForeGroundColor Yellow "  [!] changed: [${Tag}: $tool] => Require uninstall"
                 scoop uninstall $tool
             }
         }
@@ -330,7 +431,13 @@ function Invoke-ScoopPlaybook {
     if (!$ok) { return 1 }
 
     # run
-    RunMain -BaseYaml $LiteralPath -Mode $Mode
+    try {
+        RunMain -BaseYaml $LiteralPath -Mode $Mode
+    }
+    catch [Exception] {
+        Write-Host -ForeGroundColor Red "$_ $($_.GetType()) $($_.ScriptStackTrace)"
+        return 1
+    }
 }
 
 Set-Alias -Name Scoop-Playbook -Value Invoke-ScoopPlaybook
