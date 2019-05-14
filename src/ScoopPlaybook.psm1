@@ -180,7 +180,12 @@ function ScoopBucketStateHandler {
     $dryRun = $Mode -eq [RunMode]::check
     switch ($state) {
         $([StateElement]::present) {
-            ScoopBucketInstall -Bucket $moduleDetail.bucket -Tag $Tag -DryRun $dryRun
+            if ([string]::IsNullOrWhiteSpace($moduleDetail.source)) {
+                ScoopBucketInstall -Bucket $moduleDetail.bucket -Tag $Tag -DryRun $dryRun
+            }
+            else {
+                ScoopBucketInstall -Bucket $moduleDetail.bucket -Source $moduleDetail.source -Tag $Tag -DryRun $dryRun
+            }
         }
         $([StateElement]::absent) {
             ScoopBucketUninstall -Bucket $moduleDetail.bucket -Tag $Tag -DryRun $dryRun
@@ -253,6 +258,8 @@ function ScoopBucketInstall {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Bucket,
+        [Parameter(Mandatory = $false)]
+        [string]$Source,
         [Parameter(Mandatory = $true)]
         [Modules]$Tag,
         [Parameter(Mandatory = $true)]
@@ -261,15 +268,15 @@ function ScoopBucketInstall {
 
     if (!(ScoopBucketExists -Bucket $Bucket)) {
         if ($DryRun) {
-            Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $Bucket] => Require install"
+            Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $Bucket] => $Source (Require install)"
         }
         else{
-            Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] => Require install"
-            scoop bucket add $Bucket
+            Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] => $Source (Require install)"
+            scoop bucket add $Bucket $Source
         }
     }
     else {
-        Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $Bucket] => Already installed"
+        Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $Bucket] => $Source (Already installed)"
     }
 }
 
@@ -288,15 +295,15 @@ function ScoopBucketUninstall {
     $Buckets = scoop bucket list
     if (ScoopBucketExists -Bucket $Bucket) {
         if ($DryRun) {
-            Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $Bucket] => Require uninstall"
+            Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $Bucket] => (Require uninstall)"
         }
         else{
-            Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] => Require uninstall"
+            Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] => (Require uninstall)"
             scoop bucket rm $Bucket
         }
     }
     else {
-        Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $Bucket] => Already uninstalled"
+        Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $Bucket] => (Already uninstalled)"
     }
 }
 
