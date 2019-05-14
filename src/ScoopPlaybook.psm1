@@ -276,6 +276,7 @@ function ScoopBucketInstall {
         }
         else{
             Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] => $Source (Require install)"
+            Write-Host "  " -NoNewline
             scoop bucket add $Bucket $Source
         }
     }
@@ -303,6 +304,7 @@ function ScoopBucketUninstall {
         }
         else{
             Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] => (Require uninstall)"
+            Write-Host "  " -NoNewline
             scoop bucket rm $Bucket
         }
     }
@@ -348,6 +350,7 @@ function ScoopInstall {
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
                 Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $tool] => $($installed.Line) (Require install)"
+                Write-Host "  " -NoNewline
                 scoop install $tool
             }
             else {
@@ -356,11 +359,14 @@ function ScoopInstall {
                 if ($null -ne $installedStrictCheck) {
                     # previous installation was interupped
                     Write-Host -ForeGroundColor Yellow "  [!] changed: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (Failed previous installation, start reinstall.)"
+                    Write-Host "  " -NoNewline
                     scoop uninstall $tool
+                    Write-Host "  " -NoNewline
                     scoop install $tool
                 }
                 else {
                     Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (Already installed, checking update)"
+                    Write-Host "  " -NoNewline
                     scoop update $tool *>&1 | Where-Object {$_ -notmatch "Latest versions for all apps are installed"}
                 }
             }
