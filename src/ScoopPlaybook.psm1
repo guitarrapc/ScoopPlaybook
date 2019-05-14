@@ -170,6 +170,10 @@ function ScoopBucketStateHandler {
     if ($null -eq $moduleDetail.bucket) {
         $moduleDetail.bucket = "main"
     }
+    # set default source
+    if (!$moduleDetail.ContainsKey("source")) {
+        $moduleDetail["source"] = ""
+    }
     
     # pick up state and switch to install/uninstall
     $state = $moduleDetail[$([ModuleElement]::state.ToString())]
