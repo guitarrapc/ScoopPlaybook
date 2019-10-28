@@ -8,7 +8,7 @@ InModuleScope "ScoopPlaybook" {
 
     Describe "Prerequisites not installed scoop scenario" {
         BeforeAll {
-            $env:PATH = ($env:Path -split ";" -replace ".*scoop.*" | Where-Object {$_ -ne ""}) -join ";"
+            $env:PATH = ($env:Path -split ";" -replace ".*scoop.*" | Where-Object { $_ -ne "" }) -join ";"
         }
         AfterAll {
             $env:PATH = $org
@@ -23,7 +23,7 @@ InModuleScope "ScoopPlaybook" {
 
     Describe "Prerequisites already installed scoop scenario" {
         BeforeAll {
-            $env:PATH = ($env:PATH -split ";" -replace ".*scoop.*" | Where-Object {$_ -ne ""}) -join ";"
+            $env:PATH = ($env:PATH -split ";" -replace ".*scoop.*" | Where-Object { $_ -ne "" }) -join ";"
             $env:PATH = "${env:TEMP}/scoop};${env:PATH}"
         }
         AfterAll {
@@ -39,7 +39,7 @@ InModuleScope "ScoopPlaybook" {
 
     Describe "RuntimeCheck" {
         BeforeAll {
-            $env:PATH = ($env:PATH -split ";" -replace ".*scoop.*" | Where-Object {$_ -ne ""}) -join ";"
+            $env:PATH = ($env:PATH -split ";" -replace ".*scoop.*" | Where-Object { $_ -ne "" }) -join ";"
             $env:SCOOP = "${env:TEMP}/scoop"
             $env:PATH = "${env:SCOOP}/shims;${env:PATH}"
             iex (new-object net.webclient).downloadstring('https://get.scoop.sh')
@@ -58,9 +58,9 @@ InModuleScope "ScoopPlaybook" {
     }
 
     Describe "RunMain" {
-        Mock Write-Host {} -Verifiable
+        Mock Write-Host { } -Verifiable
         BeforeAll {
-            $env:PATH = ($env:PATH -split ";" -replace ".*scoop.*" | Where-Object {$_ -ne ""}) -join ";"
+            $env:PATH = ($env:PATH -split ";" -replace ".*scoop.*" | Where-Object { $_ -ne "" }) -join ";"
             $env:SCOOP = "${env:TEMP}/scoop"
             $env:PATH = "${env:SCOOP}/shims;${env:PATH}"
             iex (new-object net.webclient).downloadstring('https://get.scoop.sh')

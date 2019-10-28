@@ -22,3 +22,12 @@ Scoop-Playbook | Run scoop as with ansible structured YAML definitions
 ## Usage
 
 see https://github.com/guitarrapc/local-provisioner/tree/master/envs/windows
+
+
+## Test 
+
+Pester 4.x
+
+```
+Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck
+```
