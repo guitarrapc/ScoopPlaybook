@@ -6,20 +6,21 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 enum PlaybookKeys { name; roles; }
-enum ModuleParams { name}
+enum ModuleParams { name }
 enum Modules { scoop_install; scoop_bucket_install; }
 enum RunMode { check; run; }
 enum ModuleElement { name; state; }
 enum StateElement { present; absent; }
 
-$lineWidth = 83
+$script:lineWidth = 83
+$script:updatablePackages = [List[string]]::New()
 
 function Prerequisites {
     [OutputType([void])]
     param ()
 
     # scoop status
-    $pathExists = ($env:PATH -split ";") | Where-Object {$_ -match "scoop"} | Measure-Object
+    $pathExists = ($env:PATH -split ";") | Where-Object { $_ -match "scoop" } | Measure-Object
     if ($pathExists.Count -eq 0) {
         throw "scoop not exists in PATH! Make sure you have installed scoop. see https://scoop.sh/"
     }
@@ -32,14 +33,49 @@ function RuntimeCheck {
     )
 
     # scoop status check
-    if ($UpdateScoop) {
-        $status = scoop status *>&1
-        if (!$?) {
-            throw $status
-        }
-        if ($status -match 'scoop update') {
+    $status = scoop status *>&1
+    if (!$?) {
+        throw $status
+    }
+    if ($status -match 'scoop update') {
+        if ($UpdateScoop) {
             scoop update
         }
+        else {
+            Write-Warning "  [o] skip: [scoop-status: skipping scoop update.]"
+        }
+    }
+    $updateSection = $false
+    $removeSection = $false
+    foreach ($state in $status) {
+        if ($state -match "Updates are available") {
+            $updateSection = $true
+            $removeSection = $false
+        }
+        elseif (($state -match "These app manifests have been removed") -or ($state -match "Missing runtime dependencies")) {
+            $updateSection = $false
+            $removeSection = $true
+            Write-Host $state -ForegroundColor DarkCyan
+        }
+        elseif (($state -match "Scoop is up to date") -or ($state -match "Everything is ok!")) {
+            $updateSection = $false
+            $removeSection = $false
+            Write-Host "  [o] skip: [scoop-status: $state]" -ForegroundColor Green
+        }
+        else {
+            if ($updateSection) {
+                $package = $state.ToString().Split(":")[0].Trim()
+                $script:updatablePackages.Add($package)
+                Write-Host "  [!] check: [scoop_updatable: $($state.Trim())]" -ForegroundColor DarkCyan
+            }
+            elseif ($removeSection) {
+                $package = $state.ToString().Trim()
+                Write-Host "  [!] check: [scoop_removable: $($state.Trim())]" -ForegroundColor DarkCyan
+            }
+            else {
+                Write-Host "  [o] skip: [scoop_status: $state]" -ForegroundColor Green
+            }
+        } 
     }
 
     # check potential problem
@@ -76,7 +112,7 @@ function RunMain {
 
     # Header
     $playbookName = $definitions[$([PlaybookKeys]::name.ToString())]
-    $marker = "*" * ($lineWidth - "PLAY [$playbookName]".Length)
+    $marker = "*" * ($script:lineWidth - "PLAY [$playbookName]".Length)
     Write-Host "PLAY [$playbookName] $marker"
     Write-Host ""
 
@@ -113,7 +149,7 @@ function RunMain {
                     if ([string]::IsNullOrWhiteSpace($name)) {
                         $name = $tag.ToString()
                     }
-                    $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
+                    $marker = "*" * ($script:lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
                     ScoopModuleStateHandler -Module $module -Tag $tag -Mode $Mode
                 }
@@ -123,12 +159,12 @@ function RunMain {
                     if ([string]::IsNullOrWhiteSpace($name)) {
                         $name = $tag.ToString()
                     }
-                    $marker = "*" * ($lineWidth - "TASK [$role : $name]".Length)
+                    $marker = "*" * ($script:lineWidth - "TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
                     ScoopBucketStateHandler -Module $module -Tag $tag -Mode $Mode
                 }
                 else {
-                    $marker = "*" * ($lineWidth - "skipped: TASK [$role : $name]".Length)
+                    $marker = "*" * ($script:lineWidth - "skipped: TASK [$role : $name]".Length)
                     Write-Host "TASK [$role : $name] $marker"
                     if ($module.Keys.Count -eq 0) {
                         Write-Host -ForeGroundColor DarkGray "skipping, no module specified"
@@ -222,7 +258,7 @@ function ScoopModuleStateHandler {
     if ($null -eq $moduleDetail.bucket) {
         $moduleDetail.bucket = "main"
     }
-    if (!(ScoopBucketExists -Bucket $moduleDetail.bucket)){
+    if (!(ScoopBucketExists -Bucket $moduleDetail.bucket)) {
         throw "error: [${Tag}: $($moduleDetail.bucket)] => no matching bucket found."
     }
     
@@ -272,16 +308,16 @@ function ScoopBucketInstall {
 
     if (!(ScoopBucketExists -Bucket $Bucket)) {
         if ($DryRun) {
-            Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $Bucket] => $Source (Require install)"
+            Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $Bucket] => $Source (installed: $false)"
         }
-        else{
-            Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] => $Source (Require install)"
+        else {
+            Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] => $Source (installed: $false)"
             Write-Host "  " -NoNewline
             scoop bucket add $Bucket $Source
         }
     }
     else {
-        Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $Bucket] => $Source (Already installed)"
+        Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $Bucket]"
     }
 }
 
@@ -297,19 +333,18 @@ function ScoopBucketUninstall {
         [bool]$DryRun
     )
 
-    $Buckets = scoop bucket list
     if (ScoopBucketExists -Bucket $Bucket) {
         if ($DryRun) {
-            Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $Bucket] => (Require uninstall)"
+            Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $Bucket] (installed: $false)"
         }
-        else{
-            Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] => (Require uninstall)"
+        else {
+            Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] (installed: $false)"
             Write-Host "  " -NoNewline
             scoop bucket rm $Bucket
         }
     }
     else {
-        Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $Bucket] => (Already uninstalled)"
+        Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $Bucket]"
     }
 }
 
@@ -330,17 +365,23 @@ function ScoopInstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $tool] => $($installed.Line) (Require install)"
+                Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $tool] => $($installed.Line)"
             }
             else {
                 $outputStrict = scoop list $tool *>&1
                 $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
                 if ($null -ne $installedStrictCheck) {
                     # previous installation was interupped
-                    Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (Failed previous installation)"
+                    Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
                 }
                 else {
-                    Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (Already installed)"
+                    $isUpdatable = $updatablePackages -contains $tool
+                    if (!$isUpdatable) {
+                        Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
+                    }
+                    else {
+                        Write-Host -ForeGroundColor DarkCyan "  [!] check: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
+                    }
                     Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"                        
                 }
             }
@@ -349,7 +390,7 @@ function ScoopInstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $tool] => $($installed.Line) (Require install)"
+                Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $tool] => $($installed.Line)"
                 Write-Host "  " -NoNewline
                 scoop install $tool
             }
@@ -358,16 +399,22 @@ function ScoopInstall {
                 $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
                 if ($null -ne $installedStrictCheck) {
                     # previous installation was interupped
-                    Write-Host -ForeGroundColor Yellow "  [!] changed: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (Failed previous installation, start reinstall.)"
+                    Write-Host -ForeGroundColor Yellow "  [!] changed: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
                     Write-Host "  " -NoNewline
                     scoop uninstall $tool
                     Write-Host "  " -NoNewline
                     scoop install $tool
                 }
                 else {
-                    Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (Already installed, checking update)"
+                    $isUpdatable = $updatablePackages -contains $tool
+                    if (!$isUpdatable) {
+                        Write-Host -ForeGroundColor Green "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
+                    }
+                    else {
+                        Write-Host -ForeGroundColor DarkCyan "  [!] update: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
+                        scoop update $tool *>&1 | Foreach-Object { Write-Host $_ }                        
+                    }
                     Write-Host "  " -NoNewline
-                    scoop update $tool *>&1 | Where-Object {$_ -notmatch "Latest versions for all apps are installed"}
                 }
             }
         }
@@ -428,17 +475,37 @@ function Invoke-ScoopPlaybook {
         [RunMode]$Mode = [RunMode]::run
     )
 
-    # setup
-    if ($Mode -eq [RunMode]::check) {
-        Write-Host -ForeGroundColor Yellow "Run with $Mode mode"
+    $before = $pwd
+    try {
+        # setup
+        $marker = "*" * ($script:lineWidth - "PRE [scoop : status]".Length)
+        if ($Mode -eq [RunMode]::check) {
+            $boxMark = "o"
+            $task = "skip"
+            $color = "Green"
+        }
+        else {
+            $boxMark = "!"
+            $task = "check"
+            $color = "Yellow"
+        }
+        Write-Host "PRE [scoop : status] $marker"
+        Write-Host -ForeGroundColor $color "  [$boxMark] ${task}: [mode: Run with $Mode mode]"
+
+        # prerequisites
+        Prerequisites
+
+        # update
+        $updateScoop = $Mode -eq [RunMode]::run
+        $ok = RuntimeCheck -UpdateScoop $updateScoop    
     }
-
-    # prerequisites
-    Prerequisites
-
-    # update
-    $updateScoop = !($Mode -eq [RunMode]::check)
-    $ok = RuntimeCheck -UpdateScoop $updateScoop
+    finally {
+        # scoop automatically change current directory to scoop path, revert to runtime executed path.
+        if ($before -ne $pwd) {
+            Write-Verbose "Revert current directory to module executed path."
+            Set-Location -Path $before
+        }
+    }
 
     # run
     try {
