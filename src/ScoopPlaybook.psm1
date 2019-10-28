@@ -412,9 +412,9 @@ function ScoopInstall {
                     }
                     else {
                         Write-Host -ForeGroundColor DarkCyan "  [!] update: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
+                        Write-Host "  " -NoNewline
                         scoop update $tool *>&1 | Foreach-Object { Write-Host $_ }                        
                     }
-                    Write-Host "  " -NoNewline
                 }
             }
         }
