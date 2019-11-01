@@ -51,13 +51,14 @@ function RuntimeCheck {
         if ($state -match "Updates are available") {
             $updateSection = $true
             $removeSection = $false
+            Write-Host "  [o] check: [scoop-status: $state]" -ForegroundColor Yellow
         }
         elseif (($state -match "These app manifests have been removed") -or ($state -match "Missing runtime dependencies")) {
             $updateSection = $false
             $removeSection = $true
-            Write-Host $state -ForegroundColor DarkCyan
+            Write-Host "  [o] check: [scoop-status: $state]" -ForegroundColor Yellow
         }
-        elseif (($state -match "Scoop is up to date") -or ($state -match "Everything is ok!")) {
+        elseif ($state -match "Scoop is up to date") {
             $updateSection = $false
             $removeSection = $false
             Write-Host "  [o] skip: [scoop-status: $state]" -ForegroundColor Green
@@ -66,11 +67,11 @@ function RuntimeCheck {
             if ($updateSection) {
                 $package = $state.ToString().Split(":")[0].Trim()
                 $script:updatablePackages.Add($package)
-                Write-Host "  [!] check: [scoop_updatable: $($state.Trim())]" -ForegroundColor DarkCyan
+                Write-Host "  [!] check: [scoop_updatable: $package]" -ForegroundColor DarkCyan
             }
             elseif ($removeSection) {
                 $package = $state.ToString().Trim()
-                Write-Host "  [!] check: [scoop_removable: $($state.Trim())]" -ForegroundColor DarkCyan
+                Write-Host "  [!] check: [scoop_removable: $package]" -ForegroundColor DarkCyan
             }
             else {
                 Write-Host "  [o] skip: [scoop_status: $state]" -ForegroundColor Green
