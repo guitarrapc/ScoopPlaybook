@@ -374,7 +374,13 @@ function ScoopInstall {
    
     foreach ($tool in $Tools) {
         if ($DryRun) {
-            $output = scoop info $tool
+            $output = scoop info $tool *>&1
+            # may be typo manifest should throw fast
+            if ($output -match "Could not find manifest for") {
+                Write-Host -ForegroundColor Red "  [x] failed: [${Tag}: $tool] => $($output)"
+                throw "ACTION: please make sure your desired manifest '$tool' is available."
+            }
+            # successfully found manifest
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
                 Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $tool] => $($installed.Line)"
@@ -399,7 +405,13 @@ function ScoopInstall {
             }
         }
         else {
-            $output = scoop info $tool
+            $output = scoop info $tool *>&1
+            # may be typo manifest should throw fast
+            if ($output -match "Could not find manifest for") {
+                Write-Host -ForegroundColor Red "  [x] failed: [${Tag}: $tool] => $($output)"
+                throw "ACTION: please make sure your desired manifest '$tool' is available."
+            }
+            # successfully found manifest
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
                 Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $tool] => $($installed.Line)"
