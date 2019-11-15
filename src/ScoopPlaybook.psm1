@@ -32,18 +32,22 @@ function RuntimeCheck {
         [bool]$UpdateScoop = $false
     )
 
+    # update scoop to latest status
+    if ($UpdateScoop) {
+        $updaties = scoop update *>&1
+        foreach ($update in $updates) {
+            if ($update -match "Scoop was updated successfully") {
+                Write-Host "  [o] check: [scoop-update: $update]" -ForegroundColor Yellow
+            } else {
+                Write-Host "  [o] check: [scoop-update: $update]" -ForegroundColor Green
+            }
+        }
+    }
+
     # scoop status check
     $status = scoop status *>&1
     if (!$?) {
         throw $status
-    }
-    if ($status -match 'scoop update') {
-        if ($UpdateScoop) {
-            scoop update
-        }
-        else {
-            Write-Warning "  [o] skip: [scoop-status: skipping scoop update.]"
-        }
     }
     $updateSection = $false
     $removeSection = $false
@@ -497,8 +501,7 @@ function Invoke-ScoopPlaybook {
         Prerequisites
 
         # update
-        $updateScoop = $Mode -eq [RunMode]::run
-        $ok = RuntimeCheck -UpdateScoop $updateScoop    
+        $ok = RuntimeCheck -UpdateScoop $true
     }
     finally {
         # scoop automatically change current directory to scoop path, revert to runtime executed path.
