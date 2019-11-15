@@ -26,24 +26,35 @@ function Prerequisites {
     }
 }
 
-function RuntimeCheck {
+function UpdateScoop {
     [OutputType([void])]
     param (
         [bool]$UpdateScoop = $false
     )
 
+    # update scoop to latest status
+    if ($UpdateScoop) {
+        $updates = scoop update *>&1
+        foreach ($update in $updates) {
+            if ($update -match "Scoop was updated successfully") {
+                Write-Host "  [o] check: [scoop-update: $update]" -ForegroundColor Green
+            } elseif ($update -match "Updating .*") {
+                Write-Host "  [o] check: [scoop-update: $update]" -ForegroundColor DarkCyan
+            } else {
+                Write-Host "  [o] check: [scoop-update: $update]" -ForegroundColor Yellow
+            }
+        }
+    }
+}
+
+function RuntimeCheck {
+    [OutputType([void])]
+    param ()
+
     # scoop status check
     $status = scoop status *>&1
     if (!$?) {
         throw $status
-    }
-    if ($status -match 'scoop update') {
-        if ($UpdateScoop) {
-            scoop update
-        }
-        else {
-            Write-Warning "  [o] skip: [scoop-status: skipping scoop update.]"
-        }
     }
     $updateSection = $false
     $removeSection = $false
@@ -67,14 +78,14 @@ function RuntimeCheck {
             if ($updateSection) {
                 $package = $state.ToString().Split(":")[0].Trim()
                 $script:updatablePackages.Add($package)
-                Write-Host "  [!] check: [scoop_updatable: $package]" -ForegroundColor DarkCyan
+                Write-Host "  [!] check: [scoop-status: (updatable) $package]" -ForegroundColor DarkCyan
             }
             elseif ($removeSection) {
                 $package = $state.ToString().Trim()
-                Write-Host "  [!] check: [scoop_removable: $package]" -ForegroundColor DarkCyan
+                Write-Host "  [!] check: [scoop-status: (removable) $package]" -ForegroundColor DarkCyan
             }
             else {
-                Write-Host "  [o] skip: [scoop_status: $state]" -ForegroundColor Green
+                Write-Host "  [o] skip: [scoop-status: $state]" -ForegroundColor Green
             }
         } 
     }
@@ -363,7 +374,13 @@ function ScoopInstall {
    
     foreach ($tool in $Tools) {
         if ($DryRun) {
-            $output = scoop info $tool
+            $output = scoop info $tool *>&1
+            # may be typo manifest should throw fast
+            if ($output -match "Could not find manifest for") {
+                Write-Host -ForegroundColor Red "  [x] failed: [${Tag}: $tool] => $($output)"
+                throw "ACTION: please make sure your desired manifest '$tool' is available."
+            }
+            # successfully found manifest
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
                 Write-Host -ForeGroundColor Yellow "  [!] check: [${Tag}: $tool] => $($installed.Line)"
@@ -388,7 +405,13 @@ function ScoopInstall {
             }
         }
         else {
-            $output = scoop info $tool
+            $output = scoop info $tool *>&1
+            # may be typo manifest should throw fast
+            if ($output -match "Could not find manifest for") {
+                Write-Host -ForegroundColor Red "  [x] failed: [${Tag}: $tool] => $($output)"
+                throw "ACTION: please make sure your desired manifest '$tool' is available."
+            }
+            # successfully found manifest
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
                 Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $tool] => $($installed.Line)"
@@ -491,14 +514,19 @@ function Invoke-ScoopPlaybook {
             $color = "Yellow"
         }
         Write-Host "PRE [scoop : status] $marker"
-        Write-Host -ForeGroundColor $color "  [$boxMark] ${task}: [mode: Run with $Mode mode]"
+        Write-Host -ForeGroundColor $color "  [$boxMark] ${task}: [run with '$Mode' mode]"
 
         # prerequisites
+        Write-Host -ForeGroundColor $color "  [$boxMark] ${task}: [prerequisiting availability]"
         Prerequisites
 
         # update
-        $updateScoop = $Mode -eq [RunMode]::run
-        $ok = RuntimeCheck -UpdateScoop $updateScoop    
+        Write-Host -ForeGroundColor $color "  [$boxMark] ${task}: [updating buckets]"
+        UpdateScoop -UpdateScoop $true
+
+        # status check
+        Write-Host -ForeGroundColor $color "  [$boxMark] ${task}: [status checking]"
+        $ok = RuntimeCheck
     }
     finally {
         # scoop automatically change current directory to scoop path, revert to runtime executed path.
