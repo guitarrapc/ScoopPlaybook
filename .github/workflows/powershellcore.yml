@@ -9,7 +9,7 @@ on:
 jobs:
   build:
 
-    runs-on: windows-lates
+    runs-on: windows-latest
     timeout-minutes: 15
 
     steps:
