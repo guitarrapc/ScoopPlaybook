@@ -53,11 +53,7 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     return;
 }
 else {
-    $v = [Version]"1.0.0"
-    if (![Version]::TryParse($Version, [ref]$v)) {
-        Write-Host -ForeGroundColor Yellow "Version detected not version format, use default version. Version $Version; default $v"
-        $Version = $v.ToString()
-    }    
+    $Version = [Version]"0.0.$Version"
 }
 if (![string]::IsNullOrWhiteSpace($TagVersion)) {
     $tv = [Version]"1.0.0"
