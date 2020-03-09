@@ -21,6 +21,6 @@ jobs:
       run: |
         pwsh --version
         pwsh -command Install-Module Pester -Scope CurrentUser -Force
-        pwsh -command Install-Module PowerShell-Yaml -Scope CurrentUser -Force
-    - run: pwsh -file ./build_psd1.ps1 -Version %APPVEYOR_BUILD_VERSION% -TagVersion "%APPVEYOR_REPO_TAG_NAME%"
-    - run: pwsh -command "Invoke-Pester -CodeCoverage src/ScoopPlaybook.psm1; $LASTEXITCODE"
+        pwsh -command Install-Module PowerShell-Yaml -Scope CurrentUser
+    - pwsh: ./build_psd1.ps1 -Version %APPVEYOR_BUILD_VERSION% -TagVersion "%APPVEYOR_REPO_TAG_NAME%"
+    - pwsh: Invoke-Pester -CodeCoverage src/ScoopPlaybook.psm1
