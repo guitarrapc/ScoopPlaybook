@@ -52,11 +52,18 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     Write-Host -ForeGroundColor Yellow "Version not specified, please specify semantic version."
     return;
 }
+else {
+    $v = [Version]"1.0.0"
+    if (![Version]::TryParse($Version, [ref]$v)) {
+        Write-Host -ForeGroundColor Yellow "Version detected not version format, use default version. Version $Version; default $v"
+        $Version = $v.ToString()
+    }    
+}
 if (![string]::IsNullOrWhiteSpace($TagVersion)) {
     $tv = [Version]"1.0.0"
     if ([Version]::TryParse($TagVersion, [ref]$tv)) {
         Write-Host -ForeGroundColor Yellow "TagVersion detected. override Version via $TagVersion."
-        $Version = $TagVersion    
+        $Version = $TagVersion
     }
     else {
         Write-Host -ForeGroundColor Yellow "TagVersion detected but was not an Version type."

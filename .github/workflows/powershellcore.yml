@@ -13,6 +13,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
+    - run: export
     - uses: actions/checkout@v2
     - name: Setup .NET Core SDK
       uses: actions/setup-dotnet@v1
@@ -23,7 +24,7 @@ jobs:
         pwsh --version
         pwsh -command Install-Module Pester -Scope CurrentUser -Force
         pwsh -command Install-Module PowerShell-Yaml -Scope CurrentUser
-    - run: ./build_psd1.ps1 -Version ${{ github.run_id }} -TagVersion ${{ github.ref }}
+    - run: ./build_psd1.ps1 -Version ${{ github.run_number }} -TagVersion ${{ github.ref }}
       shell: pwsh
     - run: Invoke-Pester -CodeCoverage src/ScoopPlaybook.psm1
       shell: pwsh
