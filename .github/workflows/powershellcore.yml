@@ -25,5 +25,5 @@ jobs:
         pwsh -command Install-Module PowerShell-Yaml -Scope CurrentUser
     - run: ./build_psd1.ps1 -Version ${{ github.run_number }} -TagVersion ${{ github.ref }}
       shell: pwsh
-    - run: Invoke-Pester -CodeCoverage src/ScoopPlaybook.psm1
+    - run: Invoke-Pester
       shell: pwsh
