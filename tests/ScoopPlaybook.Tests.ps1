@@ -39,7 +39,15 @@ InModuleScope "ScoopPlaybook" {
 
     Describe "RuntimeCheck" {
         BeforeAll {
-            iwr -useb 'https://raw.githubusercontent.com/scoopinstaller/install/master/install.ps1' | iex
+            $env:PATH = ($env:PATH -split ";" -replace ".*scoop.*" | Where-Object { $_ -ne "" }) -join ";"
+            $env:SCOOP = "${env:TEMP}/scoop"
+            $env:PATH = "${env:SCOOP}/shims;${env:PATH}"
+            iex (new-object net.webclient).downloadstring('https://get.scoop.sh')
+        }
+        AfterAll {
+            Remove-Item -Path "${env:TEMP}/scoop" -Recurse -Force
+            $env:PATH = $org
+            $env:SCOOP = ""
         }
         It "custom directory installed scoop must callable" {
             { scoop } | Should -Not -Throw
@@ -51,6 +59,19 @@ InModuleScope "ScoopPlaybook" {
 
     Describe "RunMain" {
         Mock Write-Host { } -Verifiable
+        BeforeAll {
+            $env:PATH = ($env:PATH -split ";" -replace ".*scoop.*" | Where-Object { $_ -ne "" }) -join ";"
+            $env:SCOOP = "${env:TEMP}/scoop"
+            $env:PATH = "${env:SCOOP}/shims;${env:PATH}"
+            iex (new-object net.webclient).downloadstring('https://get.scoop.sh')
+        }
+        AfterAll {
+            scoop uninstall time *>&1>$null
+            Remove-Item -Path "${env:TEMP}/scoop" -Recurse -Force
+            $env:MODE = ""
+            $env:PATH = $org
+            $env:SCOOP = ""
+        }
         It "no bucket exists" {
             $buckets = ""
             ($null -eq $buckets) -or ($buckets -notmatch "extras") | Should -Be $true
