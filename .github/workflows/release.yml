@@ -1,0 +1,25 @@
+name: release
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+*" # only tag
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - run: echo '::set-env name=GIT_TAG::${GITHUB_REF#refs/tags/}'
+      - uses: actions/checkout@v2
+      - run: . ./build_psd1.ps1 -Version ${{ github.run_id }} -TagVersion $env:GIT_TAG
+        shell: pwsh
+      - run: Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force && Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1
+        shell: pwsh
+      # - run: ./deploy_pagallery.ps1 -NuGetApiKey $env:NUGET_API_KEY -BuildBranch master -ModuleName ScoopPlaybook -TagVersion $env:GIT_TAG
+      #   shell: pwsh
+      #   env:
+      #     NUGET_API_KEY: ${{ secrets.SYNCED_PSGALLERY_NUGET_KEY }}
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ScoopPlaybook_${{ env.GIT_TAG }}.zip
+          path: ./publish/ScoopPlaybook_${{ env.GIT_TAG }}.zip

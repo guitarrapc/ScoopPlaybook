@@ -52,9 +52,18 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     Write-Host -ForeGroundColor Yellow "Version not specified, please specify semantic version."
     return;
 }
+else {
+    $Version = [Version]"0.0.$Version"
+}
 if (![string]::IsNullOrWhiteSpace($TagVersion)) {
-    Write-Host -ForeGroundColor Yellow "APPVEYOR_REPO_TAG_NAME detected. override Version via $TagVersion."
-    $Version = $TagVersion
+    $tv = [Version]"1.0.0"
+    if ([Version]::TryParse($TagVersion, [ref]$tv)) {
+        Write-Host -ForeGroundColor Yellow "TagVersion detected. override Version via $TagVersion."
+        $Version = $TagVersion
+    }
+    else {
+        Write-Host -ForeGroundColor Yellow "TagVersion detected but was not an Version type."
+    }
 }
 if (Test-Path $path) {
     $manifest = Invoke-Expression (Get-Content $path -Raw)
