@@ -9,9 +9,7 @@ jobs:
       - uses: actions/checkout@v2
       - run: . ./build_psd1.ps1 -Version ${{ github.run_id }} -TagVersion "0.1.0"
         shell: pwsh
-      - run: |
-          Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
-          Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1
+      - run: Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force && Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1
         shell: pwsh
       - run: 7z a "./publish/ScoopPlaybook_${{ github.run_id }}.zip" "./publish/ScoopPlaybook/"
         shell: pwsh
