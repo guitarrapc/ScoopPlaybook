@@ -28,6 +28,5 @@ see https://github.com/guitarrapc/local-provisioner/tree/master/envs/windows
 
 Pester 4.x
 
-```
-Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck
-```
+scoop changed handling, test won't work currently. (do not run)
+<s>Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck</s>
