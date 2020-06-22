@@ -10,8 +10,9 @@ jobs:
       - run: . ./build_psd1.ps1 -Version ${{ github.run_id }} -TagVersion "0.1.0"
         shell: pwsh
       - run: |
-          Save-Module -Name PSScriptAnalyzer -Path ./tmp
-          Import-Module ./tmp/PSScriptAnalyzer
+          Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
+          # Save-Module -Name PSScriptAnalyzer -Path ./tmp
+          # Import-Module ./tmp/PSScriptAnalyzer
           Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1
         shell: pwsh
       - run: 7z a "./publish/ScoopPlaybook_${{ github.run_id }}.zip" "./publish/ScoopPlaybook/"
