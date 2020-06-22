@@ -1,6 +1,5 @@
 name: build
-
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   build:
@@ -10,5 +9,18 @@ jobs:
       - uses: actions/checkout@v2
       - run: . ./build_psd1.ps1 -Version ${{ github.run_id }} -TagVersion "0.1.0"
         shell: pwsh
+      - uses: devblackops/github-action-psscriptanalyzer@master
+        with:
+          rootPath: src/
+          settingsPath: src/ScoopPlaybook.psd1
+          sendComment: true
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          failOnErrors: true
+          failOnWarnings: true
+          failOnInfos: true
       - run: 7z a "./publish/ScoopPlaybook_${{ github.run_id }}.zip" "./publish/ScoopPlaybook/"
         shell: pwsh
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ScoopPlaybook_${{ github.run_id }}.zip
+          path: ./publish/ScoopPlaybook_${{ github.run_id }}.zip
