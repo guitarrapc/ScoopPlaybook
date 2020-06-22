@@ -1,4 +1,4 @@
-[![Build status](https://ci.appveyor.com/api/projects/status/ost9gjuwwgy0v8ly/branch/master?svg=true)](https://ci.appveyor.com/project/guitarrapc/scoopplaybook/branch/master)
+![build](https://github.com/guitarrapc/ScoopPlaybook/workflows/build/badge.svg) ![release](https://github.com/guitarrapc/ScoopPlaybook/workflows/release/badge.svg)
 
 ## ScoopPlaybook
 
