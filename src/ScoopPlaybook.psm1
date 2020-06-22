@@ -106,7 +106,7 @@ function RunMain {
         [string]$BaseYaml = "site.yml",
         [RunMode]$Mode = [RunMode]::run
     )
-    
+
     # Verify Playbook exists
     if (!(Test-Path $BaseYaml)) {
         throw [System.IO.FileNotFoundException]::New("File not found. $BaseYaml")
@@ -147,7 +147,7 @@ function RunMain {
                 Write-Verbose "No valid task definied in $task"
                 continue
             }
-        
+
             # Handle each module
             foreach ($module in $taskDef) {
                 $name = $module[$([ModuleParams]::name.ToString())]
@@ -224,7 +224,7 @@ function ScoopBucketStateHandler {
     if (!$moduleDetail.ContainsKey("source")) {
         $moduleDetail["source"] = ""
     }
-    
+
     # pick up state and switch to install/uninstall
     $state = $moduleDetail[$([ModuleElement]::state.ToString())]
     if ($null -eq $state) {
@@ -275,7 +275,7 @@ function ScoopModuleStateHandler {
     if (!(ScoopBucketExists -Bucket $moduleDetail.bucket)) {
         throw "error: [${Tag}: $($moduleDetail.bucket)] => no matching bucket found."
     }
-    
+
     # pick up state and switch to install/uninstall
     $state = $moduleDetail[$([ModuleElement]::state.ToString())]
     if ($null -eq $state) {
@@ -373,7 +373,7 @@ function ScoopInstall {
         [Parameter(Mandatory = $true)]
         [bool]$DryRun
     )
-   
+
     foreach ($tool in $Tools) {
         if ($DryRun) {
             $output = scoop info $tool *>&1
@@ -402,7 +402,7 @@ function ScoopInstall {
                     else {
                         Write-Host -ForegroundColor DarkCyan "  [!] check: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
                     }
-                    Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"                        
+                    Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"
                 }
             }
         }
@@ -439,7 +439,7 @@ function ScoopInstall {
                     else {
                         Write-Host -ForegroundColor DarkCyan "  [!] update: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
                         Write-Host "  " -NoNewline
-                        scoop update $tool *>&1 | ForEach-Object { Write-Host $_ }                        
+                        scoop update $tool *>&1 | ForEach-Object { Write-Host $_ }
                     }
                 }
             }
