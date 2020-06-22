@@ -1,0 +1,14 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v2
+      - run: . ./build_psd1.ps1 -Version ${{ github.run_id }} -TagVersion "0.1.0"
+        shell: pwsh
+      - run: 7z a "./publish/ScoopPlaybook_${{ github.run_id }}.zip" "./publish/ScoopPlaybook/"
+        shell: pwsh
