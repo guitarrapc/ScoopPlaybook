@@ -528,7 +528,7 @@ function Invoke-ScoopPlaybook {
 
         # status check
         Write-Host -ForegroundColor $color "  [$boxMark] ${task}: [status checking]"
-        $ok = RuntimeCheck
+        RuntimeCheck
     }
     finally {
         # scoop automatically change current directory to scoop path, revert to runtime executed path.

@@ -11,7 +11,7 @@ jobs:
         shell: pwsh
       - run: |
           Install-Module -Name PSScriptAnalyzer -Scope CurrentUser
-          Invoke-ScriptAnalyzer -Path ./src
+          Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1
         shell: pwsh
       - run: 7z a "./publish/ScoopPlaybook_${{ github.run_id }}.zip" "./publish/ScoopPlaybook/"
         shell: pwsh
