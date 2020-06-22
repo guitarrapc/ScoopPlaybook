@@ -18,7 +18,7 @@ jobs:
       # - run: ./deploy_pagallery.ps1 -NuGetApiKey $env:NUGET_API_KEY -BuildBranch master -ModuleName ScoopPlaybook -TagVersion $env:GIT_TAG
       #   shell: pwsh
       #   env:
-      #     NUGET_API_KEY: ${{ secrets.PSGALLERY_NUGET_KEY }}
+      #     NUGET_API_KEY: ${{ secrets.SYNCED_PSGALLERY_NUGET_KEY }}
       - uses: actions/upload-artifact@v2
         with:
           name: ScoopPlaybook_${{ env.GIT_TAG }}.zip
