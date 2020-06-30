@@ -311,7 +311,7 @@ function ScoopModuleStateHandler {
         $moduleDetail.bucket = "main"
     }
     if (!(ScoopBucketExists -Bucket $moduleDetail.bucket)) {
-        throw "error: [${Tag}: $($moduleDetail.bucket)] => no matching bucket found."
+        throw "erro: [${Tag}: $($moduleDetail.bucket)] => no matching bucket found."
     }
 
     # pick up state and switch to install/uninstall
@@ -417,7 +417,7 @@ function ScoopInstall {
             $output = scoop info $tool *>&1
             # may be typo manifest should throw fast
             if ($output -match "Could not find manifest for") {
-                PrintFail -Message "  [x] failed: [${Tag}: $tool] => $($output)"
+                PrintFail -Message "  [x] fail: [${Tag}: $tool] => $($output)"
                 throw "ACTION: please make sure your desired manifest '$tool' is available."
             }
             # successfully found manifest
@@ -448,7 +448,7 @@ function ScoopInstall {
             $output = scoop info $tool *>&1
             # may be typo manifest should throw fast
             if ($output -match "Could not find manifest for") {
-                PrintFail -Message "  [x] failed: [${Tag}: $tool] => $($output)"
+                PrintFail -Message "  [x] fail: [${Tag}: $tool] => $($output)"
                 throw "ACTION: please make sure your desired manifest '$tool' is available."
             }
             # successfully found manifest
