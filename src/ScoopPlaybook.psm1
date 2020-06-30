@@ -15,6 +15,25 @@ enum StateElement { present; absent; }
 $script:lineWidth = 83
 $script:updatablePackages = [List[string]]::New()
 
+function PrintSpace() {
+    Write-Host "  " -NoNewline
+}
+function PrintInfo([string]$Message) {
+    Write-Host $Message
+}
+function PrintSkip([string]$Message) {
+    Write-Host -ForegroundColor Green $Message
+}
+function PrintChanged([string]$Message) {
+    Write-Host -ForegroundColor DarkCyan $Message
+}
+function PrintCheck([string]$Message) {
+    Write-Host -ForegroundColor Yellow $Message
+}
+function PrintFail([string]$Message) {
+    Write-Host -ForegroundColor Red $Message
+}
+
 function Prerequisites {
     [OutputType([void])]
     param ()
@@ -37,13 +56,13 @@ function UpdateScoop {
         $updates = scoop update *>&1
         foreach ($update in $updates) {
             if ($update -match "Scoop was updated successfully") {
-                Write-Host "  [o] check: [scoop-update: $update]" -ForegroundColor Green
+                PrintSkip -Message "  [o] skip: [scoop-update: $update]"
             }
             elseif ($update -match "Updating .*") {
-                Write-Host "  [o] check: [scoop-update: $update]" -ForegroundColor DarkCyan
+                PrintChanged -Message "  [o] changed: [scoop-update: $update]"
             }
             else {
-                Write-Host "  [o] check: [scoop-update: $update]" -ForegroundColor Yellow
+                PrintCheck -Message "  [o] check: [scoop-update: $update]"
             }
         }
     }
@@ -64,30 +83,30 @@ function RuntimeCheck {
         if ($state -match "Updates are available") {
             $updateSection = $true
             $removeSection = $false
-            Write-Host "  [o] check: [scoop-status: $state]" -ForegroundColor Yellow
+            PrintCheck -Message "  [o] check: [scoop-status: $state]"
         }
         elseif (($state -match "These app manifests have been removed") -or ($state -match "Missing runtime dependencies")) {
             $updateSection = $false
             $removeSection = $true
-            Write-Host "  [o] check: [scoop-status: $state]" -ForegroundColor Yellow
+            PrintCheck -Message "  [o] check: [scoop-status: $state]"
         }
         elseif ($state -match "Scoop is up to date") {
             $updateSection = $false
             $removeSection = $false
-            Write-Host "  [o] skip: [scoop-status: $state]" -ForegroundColor Green
+            PrintSkip -Message "  [o] skip: [scoop-status: $state]"
         }
         else {
             if ($updateSection) {
                 $package = $state.ToString().Split(":")[0].Trim()
                 $script:updatablePackages.Add($package)
-                Write-Host "  [!] check: [scoop-status: (updatable) $package]" -ForegroundColor DarkCyan
+                PrintCheck -Message "  [!] check: [scoop-status: (updatable) $package]"
             }
             elseif ($removeSection) {
                 $package = $state.ToString().Trim()
-                Write-Host "  [!] check: [scoop-status: (removable) $package]" -ForegroundColor DarkCyan
+                PrintCheck -Message "  [!] check: [scoop-status: (removable) $package]"
             }
             else {
-                Write-Host "  [o] skip: [scoop-status: $state]" -ForegroundColor Green
+                PrintSkip -Message "  [o] skip: [scoop-status: $state]"
             }
         }
     }
@@ -115,20 +134,20 @@ function RunMain {
     $basePath = [System.IO.Path]::GetDirectoryName($BaseYaml)
     $definitions = Get-Content -LiteralPath $BaseYaml -Raw | ConvertFrom-Yaml
     if ($null -eq $definitions) {
-        Write-Host "Nothing definied in $BaseYaml"
+        PrintInfo -Message "Nothing definied in $BaseYaml"
         return
     }
     # Verify Playbook contains roles section
     if ($null -eq $definitions[$([PlaybookKeys]::roles.ToString())]) {
-        Write-Host "No roles definied in $BaseYaml"
+        PrintInfo -Message "No roles definied in $BaseYaml"
         return
     }
 
     # Header
     $playbookName = $definitions[$([PlaybookKeys]::name.ToString())]
     $marker = "*" * ($script:lineWidth - "PLAY [$playbookName]".Length)
-    Write-Host "PLAY [$playbookName] $marker"
-    Write-Host ""
+    PrintInfo -Message "PLAY [$playbookName] $marker"
+    PrintInfo -Message ""
 
     # Handle each role
     $roles = @($definitions[$([PlaybookKeys]::roles.ToString())])
@@ -164,7 +183,7 @@ function RunMain {
                         $name = $tag.ToString()
                     }
                     $marker = "*" * ($script:lineWidth - "TASK [$role : $name]".Length)
-                    Write-Host "TASK [$role : $name] $marker"
+                    PrintInfo -Message "TASK [$role : $name] $marker"
                     ScoopModuleStateHandler -Module $module -Tag $tag -Mode $Mode
                 }
                 elseif ($containsBucketInstall) {
@@ -174,21 +193,21 @@ function RunMain {
                         $name = $tag.ToString()
                     }
                     $marker = "*" * ($script:lineWidth - "TASK [$role : $name]".Length)
-                    Write-Host "TASK [$role : $name] $marker"
+                    PrintInfo -Message "TASK [$role : $name] $marker"
                     ScoopBucketStateHandler -Module $module -Tag $tag -Mode $Mode
                 }
                 else {
                     $marker = "*" * ($script:lineWidth - "skipped: TASK [$role : $name]".Length)
-                    Write-Host "TASK [$role : $name] $marker"
+                    PrintInfo -Message "TASK [$role : $name] $marker"
                     if ($module.Keys.Count -eq 0) {
-                        Write-Host -ForegroundColor DarkGray "skipping, no module specified"
+                        PrintSkip -Message "skipping, no module specified"
                         continue
                     }
                     else {
                         throw "error: Invalid key spacified in module `"$($module.Keys -join ',')`""
                     }
                 }
-                Write-Host ""
+                PrintInfo -Message ""
             }
         }
     }
@@ -322,16 +341,16 @@ function ScoopBucketInstall {
 
     if (!(ScoopBucketExists -Bucket $Bucket)) {
         if ($DryRun) {
-            Write-Host -ForegroundColor Yellow "  [!] check: [${Tag}: $Bucket] => $Source (installed: $false)"
+            PrintCheck -Message "  [!] check: [${Tag}: $Bucket] => $Source (installed: $false)"
         }
         else {
-            Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] => $Source (installed: $false)"
-            Write-Host "  " -NoNewline
+            PrintChanged -Message "  [!] changed: [${Tag}: $Bucket] => $Source (installed: $false)"
+            PrintSpace
             scoop bucket add $Bucket $Source
         }
     }
     else {
-        Write-Host -ForegroundColor Green "  [o] skip: [${Tag}: $Bucket]"
+        PrintSkip -Message "  [o] skip: [${Tag}: $Bucket]"
     }
 }
 
@@ -349,16 +368,16 @@ function ScoopBucketUninstall {
 
     if (ScoopBucketExists -Bucket $Bucket) {
         if ($DryRun) {
-            Write-Host -ForegroundColor Yellow "  [!] check: [${Tag}: $Bucket] (installed: $false)"
+            PrintCheck -Message "  [!] check: [${Tag}: $Bucket] (installed: $false)"
         }
         else {
-            Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $Bucket] (installed: $false)"
-            Write-Host "  " -NoNewline
+            PrintChanged -Message "  [!] changed: [${Tag}: $Bucket] (installed: $false)"
+            PrintSpace
             scoop bucket rm $Bucket
         }
     }
     else {
-        Write-Host -ForegroundColor Green "  [o] skip: [${Tag}: $Bucket]"
+        PrintSkip -Message "  [o] skip: [${Tag}: $Bucket]"
     }
 }
 
@@ -379,28 +398,28 @@ function ScoopInstall {
             $output = scoop info $tool *>&1
             # may be typo manifest should throw fast
             if ($output -match "Could not find manifest for") {
-                Write-Host -ForegroundColor Red "  [x] failed: [${Tag}: $tool] => $($output)"
+                PrintFail -Message "  [x] failed: [${Tag}: $tool] => $($output)"
                 throw "ACTION: please make sure your desired manifest '$tool' is available."
             }
             # successfully found manifest
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForegroundColor Yellow "  [!] check: [${Tag}: $tool] => $($installed.Line)"
+                PrintCheck -Message "  [!] check: [${Tag}: $tool] => $($installed.Line)"
             }
             else {
                 $outputStrict = scoop list $tool *>&1
                 $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
                 if ($null -ne $installedStrictCheck) {
                     # previous installation was interupped
-                    Write-Host -ForegroundColor Yellow "  [!] check: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
+                    PrintCheck -Message "  [!] check: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
                 }
                 else {
                     $isUpdatable = $updatablePackages -contains $tool
                     if (!$isUpdatable) {
-                        Write-Host -ForegroundColor Green "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
+                        PrintSkip -Message "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
                     }
                     else {
-                        Write-Host -ForegroundColor DarkCyan "  [!] check: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
+                        PrintCheck -Message "  [!] check: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
                     }
                     Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"
                 }
@@ -410,14 +429,14 @@ function ScoopInstall {
             $output = scoop info $tool *>&1
             # may be typo manifest should throw fast
             if ($output -match "Could not find manifest for") {
-                Write-Host -ForegroundColor Red "  [x] failed: [${Tag}: $tool] => $($output)"
+                PrintFail -Message "  [x] failed: [${Tag}: $tool] => $($output)"
                 throw "ACTION: please make sure your desired manifest '$tool' is available."
             }
             # successfully found manifest
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $tool] => $($installed.Line)"
-                Write-Host "  " -NoNewline
+                PrintChanged -Message "  [!] changed: [${Tag}: $tool] => $($installed.Line)"
+                PrintSpace
                 scoop install $tool
             }
             else {
@@ -425,21 +444,21 @@ function ScoopInstall {
                 $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
                 if ($null -ne $installedStrictCheck) {
                     # previous installation was interupped
-                    Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
-                    Write-Host "  " -NoNewline
+                    PrintChanged -Message "  [!] changed: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
+                    PrintSpace
                     scoop uninstall $tool
-                    Write-Host "  " -NoNewline
+                    PrintSpace
                     scoop install $tool
                 }
                 else {
                     $isUpdatable = $updatablePackages -contains $tool
                     if (!$isUpdatable) {
-                        Write-Host -ForegroundColor Green "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
+                        PrintSkip -Message "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
                     }
                     else {
-                        Write-Host -ForegroundColor DarkCyan "  [!] update: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
-                        Write-Host "  " -NoNewline
-                        scoop update $tool *>&1 | ForEach-Object { Write-Host $_ }
+                        PrintChanged -Message "  [!] changed: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
+                        PrintSpace
+                        scoop update $tool *>&1 | ForEach-Object { PrintInfo -Message $_ }
                     }
                 }
             }
@@ -469,22 +488,22 @@ function ScoopUninstall {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForegroundColor Green "  [o] skip: [${Tag}: $tool] => Already uninstalled"
+                PrintSkip -Message "  [o] skip: [${Tag}: $tool] => Already uninstalled"
                 Write-Verbose $installed.Line
             }
             else {
-                Write-Host -ForegroundColor Yellow "  [!] check: [${Tag}: $tool] => Require uninstall"
-                Write-Host -ForegroundColor Yellow "$($installed.Line)$($output[++$installed.LineNumber])"
+                PrintCheck -Message "  [!] check: [${Tag}: $tool] => Require uninstall"
+                PrintCheck -Message "$($installed.Line)$($output[++$installed.LineNumber])"
             }
         }
         else {
             $output = scoop info $tool
             $installed = $output | Select-String -Pattern "Installed:"
             if ($installed.Line -match "no") {
-                Write-Host -ForegroundColor Green "  [o] skip: [${Tag}: $tool] => Already uninstalled"
+                PrintSkip -Message "  [o] skip: [${Tag}: $tool] => Already uninstalled"
             }
             else {
-                Write-Host -ForegroundColor Yellow "  [!] changed: [${Tag}: $tool] => Require uninstall"
+                PrintChanged -Message "  [!] changed: [${Tag}: $tool] => Require uninstall"
                 scoop uninstall $tool
             }
         }
@@ -505,29 +524,19 @@ function Invoke-ScoopPlaybook {
     try {
         # setup
         $marker = "*" * ($script:lineWidth - "PRE [scoop : status]".Length)
-        if ($Mode -eq [RunMode]::check) {
-            $boxMark = "o"
-            $task = "skip"
-            $color = "Green"
-        }
-        else {
-            $boxMark = "!"
-            $task = "check"
-            $color = "Yellow"
-        }
-        Write-Host "PRE [scoop : status] $marker"
-        Write-Host -ForegroundColor $color "  [$boxMark] ${task}: [run with '$Mode' mode]"
+        PrintInfo -Message "PRE [scoop : status] $marker"
+        PrintCheck -Message "  [!] check: [run with '$Mode' mode]"
 
         # prerequisites
-        Write-Host -ForegroundColor $color "  [$boxMark] ${task}: [prerequisiting availability]"
+        PrintCheck -Message "  [!] check: [prerequisiting availability]"
         Prerequisites
 
         # update
-        Write-Host -ForegroundColor $color "  [$boxMark] ${task}: [updating buckets]"
+        PrintCheck -Message "  [!] check: [updating buckets]"
         UpdateScoop -UpdateScoop $true
 
         # status check
-        Write-Host -ForegroundColor $color "  [$boxMark] ${task}: [status checking]"
+        PrintCheck -Message "  [!] check: [status checking]"
         RuntimeCheck
     }
     finally {
@@ -543,7 +552,7 @@ function Invoke-ScoopPlaybook {
         RunMain -BaseYaml $LiteralPath -Mode $Mode
     }
     catch [Exception] {
-        Write-Host -ForegroundColor Yellow "ScriptStackTrace Detail: $($_.GetType()) $($_.ScriptStackTrace)"
+        PrintCheck -Message "ScriptStackTrace Detail: $($_.GetType()) $($_.ScriptStackTrace)"
         throw
     }
 }
