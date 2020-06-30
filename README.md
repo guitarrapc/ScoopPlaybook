@@ -21,7 +21,48 @@ Scoop-Playbook | Run scoop as with ansible structured YAML definitions
 
 ## Usage
 
-see https://github.com/guitarrapc/local-provisioner/tree/master/envs/windows
+define your scoop bucket, package installation.
+
+```yaml
+- name: "Install linux tools"
+  scoop_install:
+    state: present
+    bucket: main
+    name:
+      - gow
+
+- name: "Install windows tools"
+  scoop_install:
+    state: present
+    bucket: main
+    name:
+      - 7zip
+
+- name: "Install extras bucket"
+  scoop_bucket_install:
+    state: present
+    bucket: extras
+
+- name: "Install extras tools"
+  scoop_install:
+    state: present
+    bucket: extras
+    name:
+      - gitkraken
+```
+
+you can uninstall scoop package via state `absent`.
+
+```yaml
+- name: "UnInstall windows tools"
+  scoop_install:
+    state: absent
+    bucket: main
+    name:
+      - 7zip
+```
+
+more samples? see https://github.com/guitarrapc/local-provisioner/tree/master/envs/windows
 
 
 ## Test 
