@@ -32,19 +32,22 @@ function PrintSpace() {
     Write-Host -NoNewline "  "
 }
 function PrintInfo([string]$Message) {
-    Write-Host $Message
+    Write-Host "$Message"
+}
+function PrintWarning([string]$Message) {
+    Write-Warning "$Message"
 }
 function PrintSkip([string]$Message) {
-    Write-Host -ForegroundColor Green $Message
+    Write-Host -ForegroundColor Green "$Message"
 }
 function PrintChanged([string]$Message) {
-    Write-Host -ForegroundColor DarkCyan $Message
+    Write-Host -ForegroundColor DarkCyan "$Message"
 }
 function PrintCheck([string]$Message) {
-    Write-Host -ForegroundColor Yellow $Message
+    Write-Host -ForegroundColor Yellow "$Message"
 }
 function PrintFail([string]$Message) {
-    Write-Host -ForegroundColor Red $Message
+    Write-Host -ForegroundColor Red "$Message"
 }
 
 function Prerequisites {
@@ -129,7 +132,8 @@ function RuntimeCheck {
     # check potential problem
     $result = scoop checkup *>&1
     if ($result -notmatch "No problems") {
-        throw $result
+        PrintCheck -Message "  [!] chck: [scoop-status: 'scoop checkup' shows potential problems, you should fix them to avoid trouble.]"
+        PrintWarning -Message $result
     }
 }
 
