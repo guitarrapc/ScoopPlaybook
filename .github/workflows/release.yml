@@ -20,7 +20,7 @@ jobs:
         with:
           name: ScoopPlaybook_${{ env.GIT_TAG }}.zip
           path: ./publish/ScoopPlaybook_${{ env.GIT_TAG }}.zip
-      - run: ./push.ps1 -Key $KEY -DryRun $true
+      - run: ./push.ps1 -Key $env:KEY -DryRun $true
         shell: pwsh
         env:
           KEY: ${{ secrets.SYNCED_PSGALLERY_NUGET_KEY }}
