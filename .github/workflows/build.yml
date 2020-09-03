@@ -7,11 +7,5 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v2
-      - run: . ./build_psd1.ps1 -Version ${{ github.run_id }} -TagVersion "0.1.0"
-        shell: pwsh
       - run: Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force && Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1
         shell: pwsh
-      - uses: actions/upload-artifact@v2
-        with:
-          name: ScoopPlaybook_${{ github.run_id }}.zip
-          path: ./publish/ScoopPlaybook/
