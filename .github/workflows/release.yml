@@ -9,7 +9,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - run: echo "::set-env name=$(GIT_TAG::$GITHUB_REF.Replace('refs/tags/', ''))"
+      - run: echo "::set-env name=GIT_TAG::$($GITHUB_REF.Replace('refs/tags/', ''))"
       - uses: actions/checkout@v2
       - run: . ./publish.ps1 -Version $env:GIT_TAG
         shell: pwsh
