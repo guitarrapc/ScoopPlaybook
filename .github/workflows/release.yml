@@ -9,9 +9,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - run: |
-          $GIT_TAG = $REF -replace 'refs/tags/', ''
-          echo "::set-env name=GIT_TAG::$GIT_TAG"
+      - run: echo ::set-env name=GIT_TAG::${GITHUB_REF#refs/tags/}
+        shell: bash
         env:
           REF: ${{ github.ref }}
       - uses: actions/checkout@v2
