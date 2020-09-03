@@ -1,5 +1,4 @@
 #!/usr/bin/env pwsh
-[OutputType([void])]
 param (
     [Parameter(Mandatory = $true)]
     [string]$Key,
