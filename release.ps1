@@ -1,15 +1,16 @@
 #!/usr/bin/env pwsh
 [OutputType([void])]
 param (
-    [string]$Version,
-    [string]$TagVersion
+    [Parameter(Mandatory = $true)]
+    [string]$Version
 )
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $path = "$here/src/ScoopPlaybook.psd1"
 $publish = "./publish/ScoopPlaybook"
+$output = "./publish/ScoopPlaybook"
 
 # setup
-function Update([string]$Path, [string]$Version) {
+function UpdateManifest([string]$Path, [string]$Version) {
     $params = @{
         Path              = $Path
         ModuleVersion     = $Version
@@ -40,42 +41,26 @@ function GenManifest([string]$Path, [string]$Guid, [string]$Version) {
     New-ModuleManifest @params
 }
 
-function Prepare([string]$Path) {
+function PrepareOutput([string]$Path) {
     if (Test-Path $Path) {
-        Remove-Item $Path -Force -Recurse
+        Remove-Item $Path -Force -Recurse > $null
     }
-    New-Item -Path $Path -ItemType Directory -Force    
+    New-Item -Path $Path -ItemType Directory -Force > $null
 }
 
 # validation
+if (!(Test-Path -Path $path)) {
+    throw "$path not found exception."
+}
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    Write-Host -ForeGroundColor Yellow "Version not specified, please specify semantic version."
-    return;
+    throw "Version parameter is empty. please specify Version"
 }
-else {
-    $Version = [Version]"0.0.$Version"
-}
-if (![string]::IsNullOrWhiteSpace($TagVersion)) {
-    $tv = [Version]"1.0.0"
-    if ([Version]::TryParse($TagVersion, [ref]$tv)) {
-        Write-Host -ForeGroundColor Yellow "TagVersion detected. override Version via $TagVersion."
-        $Version = $TagVersion
-    }
-    else {
-        Write-Host -ForeGroundColor Yellow "TagVersion detected but was not an Version type."
-    }
-}
-if (Test-Path $path) {
-    $manifest = Invoke-Expression (Get-Content $path -Raw)
-    if ($manifest.ModuleVersion -eq $Version) {
-        Write-Host -ForeGroundColor Yellow "Same version specified, just copy existsis."
-        Prepare -Path ./publish/ScoopPlaybook
-        Copy-Item -Path src/*, *.md -Destination "$publish/"
-        return
-    }
+$v = [Version]"1.0.0"
+if (![Version]::TryParse($Version, [ref]$v)) {
+    throw "Version was not an Version type, please specify like x.x.x"
 }
 
-# run
-Update -Path $path -Version $Version
-Prepare -Path ./publish/ScoopPlaybook
-Copy-Item -Path src/*, *.md -Destination "$publish/"
+# main
+PrepareOutput -Path $output
+UpdateManifest -Path $path -Version $v
+Copy-Item -Path src/*, *.md -Destination "$publish/" -PassThru

@@ -1,43 +1,13 @@
 #!/usr/bin/env pwsh
 [OutputType([void])]
 param (
-    [string]$ModuleName,
-    [string]$NuGetApiKey,
-    [string]$BuildBranch,
-    [string]$TagVersion
+    [string]$Key,
 )
 
-# validation
-if ($env:APPVEYOR_REPO_BRANCH -notmatch $BuildBranch) {
-    Write-Host -ForeGroundColor Yellow "`"Appveyor`" deployment has been skipped as environment variable has not matched (`"APPVEYOR_REPO_BRANCH`" is `"$env:APPVEYOR_REPO_BRANCH`", should be `"$branch`""
-    return
-}
-if ([string]::IsNullOrWhiteSpace($TagVersion)) {
-    Write-Host -ForeGroundColor Yellow "`"Appveyor`" deployment has been skipped as `"TagVersion`" is blank"
-    return
-}
-if ([string]::IsNullOrWhiteSpace($NuGetApiKey)) {
-    Write-Host -ForeGroundColor Yellow "`"Appveyor`" deployment has been skipped as `"NuGetApiKey`" is not specified."
-    return
-}
-
-# Run
-Write-Host -ForegroundColor Green 'Running AppVeyor deploy script'
-
-# environment variables
+$ModuleName = "ScoopPlaybook"
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $modulePath = "$here/publish/$ModuleName"
 $manifestPath = "$here/publish/$ModuleName/$ModuleName.psd1"
-$version = $env:APPVEYOR_REPO_TAG_NAME
 
-# Test Version is correct
-$manifest = Invoke-Expression (Get-Content $manifestPath -Raw)
-$manifest
-if ($manifest.ModuleVersion -ne $version) {
-    throw "`"Appveyor`" deployment has been canceled. Version update failed (`Manifest Version is `"$($manifest.ModuleVersion)`", should be `"$version`")"
-}
-
-# Publish to PS Gallery
-Write-Host -ForeGroundColor Green 'Publishing module to Powershell Gallery'
 Import-Module $manifestPath -PassThru -Verbose
-Publish-Module -Path $modulePath -NuGetApiKey $NuGetApiKey
+Publish-Module -Path $modulePath -NuGetApiKey $Key
