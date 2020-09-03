@@ -5,11 +5,13 @@ on:
       - "[0-9]+.[0-9]+.[0-9]+*" # only tag
 
 jobs:
-  build:
+  release:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - run: echo "::set-env name=GIT_TAG::$($GITHUB_REF.Replace('refs/tags/', ''))"
+      - run: echo "::set-env name=GIT_TAG::$($REF.Replace('refs/tags/', ''))"
+        env:
+          REF: ${{ github.ref }}
       - uses: actions/checkout@v2
       - run: . ./publish.ps1 -Version $env:GIT_TAG
         shell: pwsh
