@@ -11,8 +11,11 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v2
-      - run: Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
       - run: Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force && Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1
         shell: pwsh
-      - run: Install-Module -Name Pester -Scope CurrentUser -Force && Invoke-Pester
+      - run: |
+          Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
+          scoop
+          Install-Module -Name Pester -Scope CurrentUser -Force
+          Invoke-Pester
         shell: pwsh
