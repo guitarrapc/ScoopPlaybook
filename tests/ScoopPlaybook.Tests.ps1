@@ -22,130 +22,98 @@ InModuleScope "ScoopPlaybook" {
             }
         }
     }
-    Describe "PlaybookTest success pattern" {
-        Context "When site.yaml and task is valid" {
-            BeforeEach {
-                Mock Write-Host { } -Verifiable
-            }
-            foreach ($mode in "run", "check") {
-                $env:Mode = $mode
-                $env:templatePath = "tests/templates"
-                It "installing package role should not throw" {
+    foreach ($mode in "run", "check") {
+        $env:Mode = $mode
+        $env:templatePath = "tests/templates"
+        Describe "PlaybookTest success pattern" {
+            Context "When site.yaml and task is valid" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "installing package role should not throw (mode: $env:Mode)" {
                     { RunMain -BaseYaml "$env:templatePath/success.yml" -Mode $env:MODE } | Should -Not -Throw
                 }
-                It "uninstalling package role should not throw" {
+                It "uninstalling package role should not throw (mode: $env:Mode)" {
                     { RunMain -BaseYaml "$env:templatePath/uninstall.yml" -Mode $env:MODE } | Should -Not -Throw
                 }
             }
         }
-    }
-    Describe "PlaybookTest skip pattern" {
-        Context "When site.yaml is empty" {
-            BeforeEach {
-                Mock Write-Host { } -Verifiable
-            }
-            foreach ($mode in "run", "check") {
-                $env:Mode = $mode
-                $env:templatePath = "tests/templates"
-                It "verify empty playbook should not throw" {
+        Describe "PlaybookTest skip pattern" {
+            Context "When site.yaml is empty" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "verify empty playbook should not throw (mode: $env:Mode)" {
                     { RunMain -BaseYaml "$env:templatePath/empty.yml" -Mode $env:MODE } | Should -Not -Throw
                 }
-                It "verify empty playbook should return null" {
+                It "verify empty playbook should return null (mode: $env:Mode)" {
                     RunMain -BaseYaml "$env:templatePath/empty.yml" -Mode $env:MODE | Should -BeNullOrEmpty 
                 }
             }
-        }
-        Context "When site.yaml role is missing" {
-            BeforeEach {
-                Mock Write-Host { } -Verifiable
-            }
-            foreach ($mode in "run", "check") {
-                $env:Mode = $mode
-                $env:templatePath = "tests/templates"
-                It "verify missing role playbook should throw" {
+            Context "When site.yaml role is missing" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "verify missing role playbook should throw (mode: $env:Mode)" {
                     { RunMain -BaseYaml "$env:templatePath/missingrole.yml" -Mode $env:MODE } | Should -Not -Throw
                 }
-                It "verify missing role playbook should return null" {
+                It "verify missing role playbook should return null (mode: $env:Mode)" {
                     RunMain -BaseYaml "$env:templatePath/missingrole.yml" -Mode $env:MODE | Should -BeNullOrEmpty
                 }
             }
-        }
-        Context "When site.yaml target invalid role name" {
-            BeforeEach {
-                Mock Write-Host { } -Verifiable
-            }
-            foreach ($mode in "run", "check") {
-                $env:Mode = $mode
-                $env:templatePath = "tests/templates"
-                It "verify invalid role playbook should throw" {
+            Context "When site.yaml target invalid role name" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "verify invalid role playbook should throw (mode: $env:Mode)" {
                     { RunMain -BaseYaml "$env:templatePath/invalidrole.yml" -Mode $env:MODE } | Should -Not -Throw
                 }
-                It "verify invalid role playbook should return null" {
+                It "verify invalid role playbook should return null (mode: $env:Mode)" {
                     RunMain -BaseYaml "$env:templatePath/invalidrole.yml" -Mode $env:MODE | Should -BeNullOrEmpty
                 }
             }
-        }
-        Context "When task file is missing" {
-            BeforeEach {
-                Mock Write-Host { } -Verifiable
-            }
-            foreach ($mode in "run", "check") {
-                $env:Mode = $mode
-                $env:templatePath = "tests/templates"
-                It "verify no task should not throw" {
+            Context "When task file is missing" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "verify no task should not throw (mode: $env:Mode)" {
                     { RunMain -BaseYaml "$env:templatePath/notaskfile.yml" -Mode $env:MODE } | Should -Not -Throw
                 }
             }
         }
-    }
-    Describe "PlaybookTest fail pattern" {
-        Context "When site.yaml is not exists" {
-            BeforeEach {
-                Mock Write-Host { } -Verifiable
-            }
-            foreach ($mode in "run", "check") {
-                $env:Mode = $mode
-                $env:templatePath = "tests/templates"
-                It "not existing playbook should throw" {
+        Describe "PlaybookTest fail pattern" {
+            Context "When site.yaml is not exists" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "not existing playbook should throw (mode: $env:Mode)" {
                     { RunMain -BaseYaml "noneexitpath.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
-        }
-        Context "When tasks dir is missing" {
-            BeforeEach {
-                Mock Write-Host { } -Verifiable
-            }
-            foreach ($mode in "run", "check") {
-                $env:Mode = $mode
-                $env:templatePath = "tests/templates"
-                It "verify no task dir should throw" {
+            Context "When tasks dir is missing" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "verify no task dir should throw (mode: $env:Mode)" {
                     { RunMain -BaseYaml "$env:templatePath/notaskdir.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
-        }
-        Context "When package is not exists in task" {
-            BeforeEach {
-                Mock Write-Host { } -Verifiable
-            }
-            foreach ($mode in "run", "check") {
-                $env:Mode = $mode
-                $env:templatePath = "tests/templates"
-                It "verify non existing package should throw" {
+            Context "When package is not exists in task" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "verify non existing package should throw (mode: $env:Mode)" {
                     { RunMain -BaseYaml "$env:templatePath/nonexistingpackage.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
-        }
-        Context "When task missing bucket prop" {
-            BeforeEach {
-                Mock Write-Host { } -Verifiable
-            }
-            foreach ($mode in "run", "check") {
-                $env:Mode = $mode
-                $env:templatePath = "tests/templates"
-                It "installing package should throw" {
+            Context "When task missing bucket prop" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "installing package should throw (mode: $env:Mode)" {
                     { RunMain -BaseYaml "$env:templatePath/missingbucket.yml" -Mode $env:MODE } | Should -Throw
                 }
-                It "uninstalling package  should throw" {
+                It "uninstalling package  should throw (mode: $env:Mode)" {
                     { RunMain -BaseYaml "$env:templatePath/missingbucketuninstall.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
