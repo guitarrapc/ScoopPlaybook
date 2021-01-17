@@ -36,13 +36,13 @@ This sample will install busybox, 7zip and gitkraken for you.
 
 ## Step by step Start
 
-create ansible like folder structures, and place main.yml
+Create ansible like folder structures, let make main role.
 
 ```ps1
 mkdir roles/main/tasks
 ```
 
-define your scoop bucket and package installation in in main.yml.
+Define your scoop bucket and package installation definition in your main role's task/main.yml.
 
 ```shell
 New-Item roles/main/tasks/main.yml
@@ -77,7 +77,7 @@ code roles/main/tasks/main.yml
       - gitkraken
 ```
 
-define your site.yaml to select which role to call.
+Define your site.yml to select which role to use.
 
 ```shell
 New-Item site.yml
@@ -90,7 +90,7 @@ roles:
   - main
 ```
 
-Run ScoopPlaybook to execure installation.
+You are ready, let's run ScoopPlaybook Cmdlet to install scoop packages and buckets you desired.
 
 ```shell
 Install-Module PowerShell-Yaml -Scope CurrentUser
@@ -98,7 +98,7 @@ Install-Module ScoopPlaybook -Scope CurrentUser
 Scoop-Playbook
 ```
 
-you can uninstall scoop package via state `absent`.
+You can uninstall scoop package via state `absent`.
 
 ```yaml
 - name: "UnInstall windows tools"
@@ -113,7 +113,7 @@ more samples? see https://github.com/guitarrapc/local-provisioner/tree/master/en
 
 ## SCHEME
 
-**site.yaml scheme**
+**site.yml scheme**
 
 Select which role to install/uninstall.
 This file location is where your must run `Scoop-Playbook` Cmdlet.
