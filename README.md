@@ -21,6 +21,13 @@ Scoop-Playbook | Run scoop as with ansible structured YAML definitions
 
 ## Usage
 
+Install required modules.
+
+```ps1
+Install-Module PowerShell-Yaml -Scope CurrentUser
+Install-Module ScoopPlaybook -Scope CurrentUser
+```
+
 create ansible like folder structures, and place main.yml
 
 ```ps1
@@ -81,9 +88,7 @@ more samples? see https://github.com/guitarrapc/local-provisioner/tree/master/en
 
 ## Test 
 
-Pester 4.x
-
-
-scoop changed handling, test won't work currently. (do not run)
-
-<s>Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck</s>
+```ps1
+Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck
+Invoke-Pester
+```

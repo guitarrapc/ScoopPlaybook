@@ -139,7 +139,7 @@ function RuntimeCheck {
 
 function RunMain {
     [CmdletBinding()]
-    [OutputType([int])]
+    [OutputType([void])]
     param(
         [string]$BaseYaml = "site.yml",
         [RunMode]$Mode = [RunMode]::run
@@ -239,7 +239,7 @@ function RunMain {
 
 function ScoopBucketStateHandler {
     [CmdletBinding()]
-    [OutputType([int])]
+    [OutputType([void])]
     param(
         [Parameter(Mandatory = $true)]
         [HashTable]$Module,
@@ -291,7 +291,7 @@ function ScoopBucketStateHandler {
 
 function ScoopModuleStateHandler {
     [CmdletBinding()]
-    [OutputType([int])]
+    [OutputType([void])]
     param(
         [Parameter(Mandatory = $true)]
         [HashTable]$Module,
@@ -406,7 +406,7 @@ function ScoopBucketUninstall {
 
 function ScoopInstall {
     [CmdletBinding()]
-    [OutputType([int])]
+    [OutputType([void])]
     param(
         [Parameter(Mandatory = $true)]
         [string[]]$Tools,
@@ -490,7 +490,7 @@ function ScoopInstall {
 }
 
 function ScoopUninstall {
-    [OutputType([int])]
+    [OutputType([void])]
     param(
         [Parameter(Mandatory = $true)]
         [string[]]$Tools,
@@ -535,7 +535,7 @@ function ScoopUninstall {
 
 function Invoke-ScoopPlaybook {
     [CmdletBinding()]
-    [OutputType([int])]
+    [OutputType([void])]
     param(
         [Parameter(Mandatory = $false)]
         [Alias("FullName", "Path", "PSPath")]
@@ -577,7 +577,7 @@ function Invoke-ScoopPlaybook {
 
     # run
     try {
-        RunMain -BaseYaml $LiteralPath -Mode $Mode
+        RunMain -BaseYaml $LiteralPath -Mode $Mode        
     }
     catch [Exception] {
         PrintCheck -Message "ScriptStackTrace Detail: $($_.GetType()) $($_.ScriptStackTrace)"
