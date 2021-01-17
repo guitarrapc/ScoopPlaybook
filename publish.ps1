@@ -5,52 +5,12 @@ param (
 )
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $path = "$here/src/ScoopPlaybook.psd1"
-$publish = "./publish/ScoopPlaybook"
-$output = "./publish/ScoopPlaybook"
-
-# setup
-function UpdateManifest([string]$Path, [string]$Version) {
-    $params = @{
-        Path              = $Path
-        ModuleVersion     = $Version
-        FunctionsToExport = ("Invoke-ScoopPlaybook")
-        AliasesToExport   = ("Scoop-Playbook")
-        ReleaseNotes      = "https://github.com/guitarrapc/ScoopPlaybook/releases/tag/$Version"
-    }
-    Update-ModuleManifest @params
-}
-
-function GenManifest([string]$Path, [string]$Guid, [string]$Version) {
-    $params = @{
-        Path                 = $Path
-        Guid                 = $Guid
-        PowerShellVersion    = "5.1"
-        Author               = "guitarrapc"
-        ModuleVersion        = $Version
-        RootModule           = "ScoopPlaybook.psm1"
-        Description          = "PowerShell Module to run scoop like ansible playbook"
-        CompatiblePSEditions = ("Core", "Desktop")
-        FunctionsToExport    = ("Invoke-ScoopPlaybook")
-        AliasesToExport      = ("Scoop-Playbook")
-        Tags                 = "Scoop"
-        ProjectUri           = "https://github.com/guitarrapc/ScoopPlaybook"
-        LicenseUri           = "https://github.com/guitarrapc/ScoopPlaybook/blob/master/LICENSE.md"
-        ReleaseNotes         = "https://github.com/guitarrapc/ScoopPlaybook/releases/tag/$Version"
-    }
-    New-ModuleManifest @params
-}
-
-function PrepareOutput([string]$Path) {
-    if (Test-Path $Path) {
-        Remove-Item $Path -Force -Recurse > $null
-    }
-    New-Item -Path $Path -ItemType Directory -Force > $null
-}
+$publish = "$here/publish/ScoopPlaybook"
+$rootModule = "ScoopPlaybook.psm1"
+$functionToExport = @("Invoke-ScoopPlaybook")
+$aliasToExport = @("Scoop-Playbook")
 
 # validation
-if (!(Test-Path -Path $path)) {
-    throw "$path not found exception."
-}
 if ([string]::IsNullOrWhiteSpace($Version)) {
     throw "Version parameter is empty. please specify Version"
 }
@@ -60,6 +20,38 @@ if (![Version]::TryParse($Version, [ref]$v)) {
 }
 
 # main
-PrepareOutput -Path $output
-UpdateManifest -Path $path -Version $v
-Copy-Item -Path src/*, *.md -Destination "$publish/" -PassThru
+New-Item -Path $Publish -ItemType Directory -Force > $null
+if (!(Test-Path -Path $path)) {
+    Write-Host "Generating manifest."
+    $genParams = @{
+        Path                 = $path
+        Guid                 = [Guid]::NewGuid().ToString()
+        PowerShellVersion    = "5.1"
+        Author               = "guitarrapc"
+        ModuleVersion        = $v
+        RootModule           = $rootModule
+        Description          = "PowerShell Module to run scoop like ansible playbook"
+        CompatiblePSEditions = ("Core", "Desktop")
+        FunctionsToExport    = $functionToExport
+        AliasesToExport      = $aliasToExport
+        CmdletsToExport      = @()
+        VariablesToExport    = @()
+        Tags                 = "scoop"
+        ProjectUri           = "https://github.com/guitarrapc/ScoopPlaybook"
+        LicenseUri           = "https://github.com/guitarrapc/ScoopPlaybook/blob/master/LICENSE.md"
+        ReleaseNotes         = "https://github.com/guitarrapc/ScoopPlaybook/releases/tag/$Version"
+    }
+    New-ModuleManifest @genParams
+}
+else {
+    Write-Host "Updading existing manifest."
+    $updateParams = @{
+        Path              = $path
+        ModuleVersion     = $v
+        FunctionsToExport = $functionToExport
+        AliasesToExport   = $aliasToExport
+        ReleaseNotes      = "https://github.com/guitarrapc/ScoopPlaybook/releases/tag/$Version"
+    }
+    Update-ModuleManifest @updateParams
+}
+Copy-Item -Path "$here/src/*", *.md -Destination "$publish/" -PassThru
