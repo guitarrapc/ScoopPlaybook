@@ -3,117 +3,139 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . "$here\$sut"
 
 InModuleScope "ScoopPlaybook" {
-    $org = $env:PATH
-    $templatePath = "tests/templates"
-
-    Describe "Prerequisites not installed scoop scenario" {
-        BeforeAll {
-            $env:PATH = ($env:Path -split ";" -replace ".*scoop.*" | Where-Object { $_ -ne "" }) -join ";"
-        }
-        AfterAll {
-            $env:PATH = $org
-        }
-        It "environment variable is mocking not to have scoop" {
-            $env:PATH | Should -Not -Match "scoop"
-        }
-        It "throw if scoop is not found in environment variable" {
-            { Prerequisites } | Should -Throw
+    Describe "Pre execute Test" {
+        Context "When there are scoop installed" {
+            BeforeEach {
+                Mock Write-Host { } -Verifiable
+            }
+            It "scoop is installed" {
+                { scoop } | Should -Not -Throw
+            }
+            It "prerequisites will not fail if scoop is installed." {
+                { Prerequisites } | Should -Not -Throw
+            }
+            It "UpdateScoop will not fail if scoop is installed." {
+                { UpdateScoop } | Should -Not -Throw
+            }
+            It "runtime check should be pass when latest scoop installed" {
+                { RuntimeCheck } | Should -Not -Throw
+            }
         }
     }
-
-    Describe "Prerequisites already installed scoop scenario" {
-        BeforeAll {
-            $env:PATH = ($env:PATH -split ";" -replace ".*scoop.*" | Where-Object { $_ -ne "" }) -join ";"
-            $env:PATH = "${env:TEMP}/scoop};${env:PATH}"
-        }
-        AfterAll {
-            $env:PATH = $org
-        }
-        It "environment variable is mocking to have scoop" {
-            $env:PATH | Should -Match "scoop"
-        }
-        It "never throw if scoop is found in environment variable" {
-            { Prerequisites } | Should -Not -Throw
+    Describe "PlaybookTest success pattern" {
+        Context "When site.yaml and task is valid" {
+            BeforeEach {
+                Mock Write-Host { } -Verifiable
+            }
+            foreach ($mode in "run", "check") {
+                $env:Mode = $mode
+                $env:templatePath = "tests/templates"
+                It "installing package role should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/success.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+                It "uninstalling package role should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/uninstall.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+            }
         }
     }
-
-    Describe "RuntimeCheck" {
-        BeforeAll {
-            $env:PATH = ($env:PATH -split ";" -replace ".*scoop.*" | Where-Object { $_ -ne "" }) -join ";"
-            $env:SCOOP = "${env:TEMP}/scoop"
-            $env:PATH = "${env:SCOOP}/shims;${env:PATH}"
-            iex (new-object net.webclient).downloadstring('https://get.scoop.sh')
+    Describe "PlaybookTest skip pattern" {
+        Context "When site.yaml is empty" {
+            BeforeEach {
+                Mock Write-Host { } -Verifiable
+            }
+            foreach ($mode in "run", "check") {
+                $env:Mode = $mode
+                $env:templatePath = "tests/templates"
+                It "verify empty playbook should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/empty.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+                It "verify empty playbook should return null" {
+                    RunMain -BaseYaml "$env:templatePath/empty.yml" -Mode $env:MODE | Should -BeNullOrEmpty 
+                }
+            }
         }
-        AfterAll {
-            Remove-Item -Path "${env:TEMP}/scoop" -Recurse -Force
-            $env:PATH = $org
-            $env:SCOOP = ""
+        Context "When site.yaml role is missing" {
+            BeforeEach {
+                Mock Write-Host { } -Verifiable
+            }
+            foreach ($mode in "run", "check") {
+                $env:Mode = $mode
+                $env:templatePath = "tests/templates"
+                It "verify missing role playbook should throw" {
+                    { RunMain -BaseYaml "$env:templatePath/missingrole.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+                It "verify missing role playbook should return null" {
+                    RunMain -BaseYaml "$env:templatePath/missingrole.yml" -Mode $env:MODE | Should -BeNullOrEmpty
+                }
+            }
         }
-        It "custom directory installed scoop must callable" {
-            { scoop } | Should -Not -Throw
+        Context "When site.yaml target invalid role name" {
+            BeforeEach {
+                Mock Write-Host { } -Verifiable
+            }
+            foreach ($mode in "run", "check") {
+                $env:Mode = $mode
+                $env:templatePath = "tests/templates"
+                It "verify invalid role playbook should throw" {
+                    { RunMain -BaseYaml "$env:templatePath/invalidrole.yml" -Mode $env:MODE} | Should -Not -Throw
+                }
+                It "verify invalid role playbook should return null" {
+                    RunMain -BaseYaml "$env:templatePath/invalidrole.yml" -Mode $env:MODE | Should -BeNullOrEmpty
+                }
+            }
         }
-        It "runtime check should be pass when latest scoop installed" {
-            RuntimeCheck | Should -Be $true
+        Context "When task is empty" {
+            BeforeEach {
+                Mock Write-Host { } -Verifiable
+            }
+            foreach ($mode in "run", "check") {
+                $env:Mode = $mode
+                $env:templatePath = "tests/templates"
+                It "verify no task should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/notask.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+            }
         }
     }
-
-    Describe "RunMain" {
-        Mock Write-Host { } -Verifiable
-        BeforeAll {
-            $env:PATH = ($env:PATH -split ";" -replace ".*scoop.*" | Where-Object { $_ -ne "" }) -join ";"
-            $env:SCOOP = "${env:TEMP}/scoop"
-            $env:PATH = "${env:SCOOP}/shims;${env:PATH}"
-            iex (new-object net.webclient).downloadstring('https://get.scoop.sh')
+    Describe "PlaybookTest fail pattern" {
+        Context "When site.yaml is not exists" {
+            BeforeEach {
+                Mock Write-Host { } -Verifiable
+            }
+            foreach ($mode in "run", "check") {
+                $env:Mode = $mode
+                $env:templatePath = "tests/templates"
+                It "not existing playbook should throw" {
+                    { RunMain -BaseYaml "noneexitpath.yml" -Mode $env:MODE } | Should -Throw
+                }
+            }
         }
-        AfterAll {
-            scoop uninstall time *>&1>$null
-            Remove-Item -Path "${env:TEMP}/scoop" -Recurse -Force
-            $env:MODE = ""
-            $env:PATH = $org
-            $env:SCOOP = ""
+        Context "When package is not exists in task" {
+            BeforeEach {
+                Mock Write-Host { } -Verifiable
+            }
+            foreach ($mode in "run", "check") {
+                $env:Mode = $mode
+                $env:templatePath = "tests/templates"
+                It "verify non existing package should throw" {
+                    { RunMain -BaseYaml "$env:templatePath/nonexistingpackage.yml" -Mode $env:MODE } | Should -Throw
+                }
+            }
         }
-        It "no bucket exists" {
-            $buckets = ""
-            ($null -eq $buckets) -or ($buckets -notmatch "extras") | Should -Be $true
-        }
-        It "extras bucket exists" {
-            $buckets = "extras"
-            ($null -eq $buckets) -or ($buckets -notmatch "extras") | Should -Be $false
-        }
-        foreach ($mode in "run", "check") {
-            $env:Mode = $mode
-            It "not existing playbook should throw" {
-                { RunMain -BaseYaml "noneexitpath.yml" -Mode $env:MODE } | Should -Throw
+        Context "When task missing bucket prop" {
+            BeforeEach {
+                Mock Write-Host { } -Verifiable
             }
-            It "verify empty playbook should not throw" {
-                { RunMain -BaseYaml "$templatePath/empty.yml" -Mode $env:MODE } | Should -Not -Throw
-            }
-            It "verify empty playbook should return 0" {
-                RunMain -BaseYaml "$templatePath/empty.yml" -Mode $env:MODE | Should -Be 0
-            }
-            It "verify missing role playbook should not throw" {
-                RunMain -BaseYaml "$templatePath/missingrole.yml" -Mode $env:MODE | Should -Be 0
-            }
-            It "verify nonexisting role playbook should return 0" {
-                RunMain -BaseYaml "$templatePath/fakerole.yml" -Mode $env:MODE | Should -Be 0
-            }
-            It "verify none existing task role should not throw" {
-                { RunMain -BaseYaml "$templatePath/notask.yml" -Mode $env:MODE } | Should -Not -Throw
-            }
-            It "verify not valid module role should throw" {
-                { RunMain -BaseYaml "$templatePath/notvalidmodule.yml" -Mode $env:MODE } | Should -Throw
-            }
-            It "verify nonexisting package role should throw" {
-                { RunMain -BaseYaml "$templatePath/nonexistingpackage.yml" -Mode $env:MODE } | Should -Throw
-            }
-            It "verify check install package role should return 0" {
-                { RunMain -BaseYaml "$templatePath/success.yml" -Mode $env:MODE } | Should -Not -Throw
-            }
-            It "installing package role should not throw" {
-                { RunMain -BaseYaml "$templatePath/success.yml" -Mode $env:MODE } | Should -Not -Throw
-            }
-            It "uninstalling package role should not throw" {
-                { RunMain -BaseYaml "$templatePath/uninstall.yml" -Mode $env:MODE } | Should -Not -Throw
+            foreach ($mode in "run", "check") {
+                $env:Mode = $mode
+                $env:templatePath = "tests/templates"
+                It "installing package should throw" {
+                    { RunMain -BaseYaml "$env:templatePath/missingbucket.yml" -Mode $env:MODE } | Should -Throw
+                }
+                It "uninstalling package  should throw" {
+                    { RunMain -BaseYaml "$env:templatePath/missingbucketuninstall.yml" -Mode $env:MODE } | Should -Throw
+                }
             }
         }
     }

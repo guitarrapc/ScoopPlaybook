@@ -1,5 +1,0 @@
-- name: "non exisiting package"
-  scoop_uninstall:
-    state: present
-    name:
-      - notvalidmodule

@@ -81,9 +81,7 @@ more samples? see https://github.com/guitarrapc/local-provisioner/tree/master/en
 
 ## Test 
 
-Pester 4.x
-
-
-scoop changed handling, test won't work currently. (do not run)
-
-<s>Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck</s>
+```ps1
+Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck
+Invoke-Pester
+```

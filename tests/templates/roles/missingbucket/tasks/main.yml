@@ -1,6 +1,5 @@
-- name: "success"
+- name: "missing bucket"
   scoop_install:
     state: present
-    bucket: main
     name:
       - time
