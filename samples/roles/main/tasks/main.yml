@@ -1,0 +1,25 @@
+- name: "Install linux tools"
+  scoop_install:
+    state: present
+    bucket: main
+    name:
+      - busybox
+
+- name: "Install windows tools"
+  scoop_install:
+    state: present
+    bucket: main
+    name:
+      - 7zip
+
+- name: "Install extras bucket"
+  scoop_bucket_install:
+    state: present
+    bucket: extras
+
+- name: "Install extras tools"
+  scoop_install:
+    state: present
+    bucket: extras
+    name:
+      - gitkraken

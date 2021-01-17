@@ -21,7 +21,15 @@ Scoop-Playbook | Run scoop as with ansible structured YAML definitions
 
 ## Usage
 
-define your scoop bucket, package installation.
+create ansible like folder structures, and place main.yml
+
+```ps1
+mkdir roles/main/tasks
+New-Item roles/main/tasks/main.yml
+code roles/main/tasks/main.yml
+```
+
+define your scoop bucket and package installation in in main.yml.
 
 ```yaml
 - name: "Install linux tools"
@@ -29,7 +37,7 @@ define your scoop bucket, package installation.
     state: present
     bucket: main
     name:
-      - gow
+      - busybox
 
 - name: "Install windows tools"
   scoop_install:
@@ -51,6 +59,13 @@ define your scoop bucket, package installation.
       - gitkraken
 ```
 
+Run ScoopPlaybook to execure installation.
+
+```shell
+Import-Module ScoopPlaybook.
+Scoop-Playbook
+```
+
 you can uninstall scoop package via state `absent`.
 
 ```yaml
@@ -64,10 +79,11 @@ you can uninstall scoop package via state `absent`.
 
 more samples? see https://github.com/guitarrapc/local-provisioner/tree/master/envs/windows
 
-
 ## Test 
 
 Pester 4.x
 
+
 scoop changed handling, test won't work currently. (do not run)
+
 <s>Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck</s>
