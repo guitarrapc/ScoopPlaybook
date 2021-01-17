@@ -9,7 +9,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - run: echo ::set-env name=GIT_TAG::${GITHUB_REF#refs/tags/}
+      - run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
         shell: bash
         env:
           REF: ${{ github.ref }}
