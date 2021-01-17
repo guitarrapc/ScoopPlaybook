@@ -173,7 +173,7 @@ function RunMain {
     $roles = @($definitions[$([PlaybookKeys]::roles.ToString())])
     foreach ($role in $roles) {
         Write-Verbose "Checking role definition from [$basePath/roles/$role/tasks/]"
-        $tasks = Get-ChildItem -LiteralPath "$basePath/roles/$role/tasks/" -Include *.yml -File
+        $tasks = Get-ChildItem -LiteralPath "$basePath/roles/$role/tasks/" -File | Where-Object Extension -in @(".yml", ".yaml")
         if ($null -eq $tasks) {
             continue
         }
@@ -577,7 +577,7 @@ function Invoke-ScoopPlaybook {
 
     # run
     try {
-        RunMain -BaseYaml $LiteralPath -Mode $Mode        
+        RunMain -BaseYaml $LiteralPath -Mode $Mode
     }
     catch [Exception] {
         PrintCheck -Message "ScriptStackTrace Detail: $($_.GetType()) $($_.ScriptStackTrace)"

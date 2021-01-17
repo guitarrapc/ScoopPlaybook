@@ -78,14 +78,14 @@ InModuleScope "ScoopPlaybook" {
                 $env:Mode = $mode
                 $env:templatePath = "tests/templates"
                 It "verify invalid role playbook should throw" {
-                    { RunMain -BaseYaml "$env:templatePath/invalidrole.yml" -Mode $env:MODE} | Should -Not -Throw
+                    { RunMain -BaseYaml "$env:templatePath/invalidrole.yml" -Mode $env:MODE } | Should -Not -Throw
                 }
                 It "verify invalid role playbook should return null" {
                     RunMain -BaseYaml "$env:templatePath/invalidrole.yml" -Mode $env:MODE | Should -BeNullOrEmpty
                 }
             }
         }
-        Context "When task is empty" {
+        Context "When task file is missing" {
             BeforeEach {
                 Mock Write-Host { } -Verifiable
             }
@@ -93,7 +93,7 @@ InModuleScope "ScoopPlaybook" {
                 $env:Mode = $mode
                 $env:templatePath = "tests/templates"
                 It "verify no task should not throw" {
-                    { RunMain -BaseYaml "$env:templatePath/notask.yml" -Mode $env:MODE } | Should -Not -Throw
+                    { RunMain -BaseYaml "$env:templatePath/notaskfile.yml" -Mode $env:MODE } | Should -Not -Throw
                 }
             }
         }
@@ -108,6 +108,18 @@ InModuleScope "ScoopPlaybook" {
                 $env:templatePath = "tests/templates"
                 It "not existing playbook should throw" {
                     { RunMain -BaseYaml "noneexitpath.yml" -Mode $env:MODE } | Should -Throw
+                }
+            }
+        }
+        Context "When tasks dir is missing" {
+            BeforeEach {
+                Mock Write-Host { } -Verifiable
+            }
+            foreach ($mode in "run", "check") {
+                $env:Mode = $mode
+                $env:templatePath = "tests/templates"
+                It "verify no task dir should throw" {
+                    { RunMain -BaseYaml "$env:templatePath/notaskdir.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
         }

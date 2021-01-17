@@ -179,5 +179,7 @@ roles:
 
 ```ps1
 Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck
+Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+Install-Module PowerShell-Yaml -Force -Scope CurrentUser
 Invoke-Pester
 ```
