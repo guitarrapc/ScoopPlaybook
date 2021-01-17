@@ -14,7 +14,7 @@ jobs:
       - name: run script analyzer
         run: |
           Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
-          Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1
+          Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1 -Severity Warning
           Invoke-ScriptAnalyzer -Path ./src/ScoopPlaybook.psm1 -Settings CodeFormatting
         shell: pwsh
       - name: run unit test

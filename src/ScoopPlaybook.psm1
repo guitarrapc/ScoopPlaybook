@@ -173,7 +173,7 @@ function RunMain {
     $roles = @($definitions[$([PlaybookKeys]::roles.ToString())])
     foreach ($role in $roles) {
         Write-Verbose "Checking role definition from [$basePath/roles/$role/tasks/]"
-        $tasks = Get-ChildItem -LiteralPath "$basePath/roles/$role/tasks/" -File | Where-Object Extension -in @(".yml", ".yaml")
+        $tasks = Get-ChildItem -LiteralPath "$basePath/roles/$role/tasks/" -File | Where-Object { $_.Extension -in @(".yml", ".yaml") }
         if ($null -eq $tasks) {
             continue
         }
