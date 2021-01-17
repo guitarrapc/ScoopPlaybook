@@ -30,8 +30,9 @@ if (!(Test-Path -Path $path)) {
         Author               = "guitarrapc"
         ModuleVersion        = $v
         RootModule           = $rootModule
+        RequiredModules      = @("PowerShell-Yaml")
         Description          = "PowerShell Module to run scoop like ansible playbook"
-        CompatiblePSEditions = ("Core", "Desktop")
+        CompatiblePSEditions = @("Core", "Desktop")
         FunctionsToExport    = $functionToExport
         AliasesToExport      = $aliasToExport
         CmdletsToExport      = @()

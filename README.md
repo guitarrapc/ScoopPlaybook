@@ -21,6 +21,13 @@ Scoop-Playbook | Run scoop as with ansible structured YAML definitions
 
 ## Usage
 
+Install required modules.
+
+```ps1
+Install-Module PowerShell-Yaml -Scope CurrentUser
+Install-Module ScoopPlaybook -Scope CurrentUser
+```
+
 create ansible like folder structures, and place main.yml
 
 ```ps1
