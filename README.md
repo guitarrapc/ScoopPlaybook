@@ -111,25 +111,52 @@ You can uninstall scoop package via state `absent`.
 
 more samples? see https://github.com/guitarrapc/local-provisioner/tree/master/envs/windows
 
-## SCHEME
+## Definition
+
+### Structures
+
+Structure is follow to ansible, but there are only role function, no variables or any.
+
+* site.yml: site.yml is entrypoint of scheme, and select which role to call.
+* role: role must place under `roles/<roleName>` folder. Site.yml call role must match a role folder name.
+* task: task must place under `roles/<roleName>/tasks/main.yml`. task contains multiple modules.
+* module: module offer what you can do. there are 2 modules you can use.
+    * scoop_install
+    * scoop_bucket_install
+
+`site.yml` file location is where your must run `Scoop-Playbook` Cmdlet.
+Here's sample structures.
+
+```
+site.yml
+└───roles
+    ├───main
+    │   └───tasks
+    │       └───main.yml
+    └───extras
+        └───tasks
+            └───main.yml
+```
+
+
+### SCHEME
 
 **site.yml scheme**
 
-Select which role to install/uninstall.
-This file location is where your must run `Scoop-Playbook` Cmdlet.
+Select which role to call.
 
 ```yaml
-name: "<string>" # REQUIRED: NAME OF YOUR DEFINITION
+name: "<string>" # REQUIRED: name of you definition
 roles:
-  - "<string>" # REQUIRED: ROLE NAME TO CALL
+  - "<string>" # REQUIRED: role name to call. this roll name must match rolle file name.
 ```
 
-**Role - scoop_install**
+**Module - scoop_install module**
 
-Install/Uninstall scoop package from selected bucket.
+`scoop_install` Module offer Install/Uninstall scoop package from selected bucket.
 
 ```yaml
-- name: "<string>" # REQUIRED: name of role
+- name: "<string>" # REQUIRED: name of module
   scoop_install:
     state: "present|absent" # OPTIONAL (default "present"): enums of present or absent. present to install, absent to uninstall.
     bucket: "<string>" # REQUIRED: bucket name to install package.
@@ -137,12 +164,12 @@ Install/Uninstall scoop package from selected bucket.
       - "<string>" # REQUIRED: list of strings to identify package names
 ```
 
-**Role - scoop_bucket_install**
+**Module - scoop_bucket_install module**
 
-Install/Uninstall scoop bucket.
+`scoop_bucket_install` module offers Install/Uninstall scoop bucket.
 
 ```yaml
-- name: "<string>" # REQUIRED: name of role
+- name: "<string>" # REQUIRED: name of module
   scoop_bucket_install:
     state: "present|absent" # OPTIONAL: present to install, absent to uninstall. default "present".
     bucket: "<string>" # REQUIRED: bucket name to install package.
