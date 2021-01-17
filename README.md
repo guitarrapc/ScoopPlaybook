@@ -19,24 +19,35 @@ Function | Description
 ---- | ----
 Scoop-Playbook | Run scoop as with ansible structured YAML definitions
 
-## Usage
+## Quick Start
 
-Install required modules.
+[Install scoop beforehand](https://scoop.sh/), then clone repo and run module.
 
 ```ps1
 Install-Module PowerShell-Yaml -Scope CurrentUser
 Install-Module ScoopPlaybook -Scope CurrentUser
+
+git clone https://github.com/guitarrapc/ScoopPlaybook.git
+cd ScoopPlaybook/samples
+Scoop-Playbook
 ```
+
+This sample will install busybox, 7zip and gitkraken for you.
+
+## Step by step Start
 
 create ansible like folder structures, and place main.yml
 
 ```ps1
 mkdir roles/main/tasks
-New-Item roles/main/tasks/main.yml
-code roles/main/tasks/main.yml
 ```
 
 define your scoop bucket and package installation in in main.yml.
+
+```shell
+New-Item roles/main/tasks/main.yml
+code roles/main/tasks/main.yml
+```
 
 ```yaml
 - name: "Install linux tools"
@@ -66,10 +77,24 @@ define your scoop bucket and package installation in in main.yml.
       - gitkraken
 ```
 
+define your site.yaml to select which role to call.
+
+```shell
+New-Item site.yml
+code site.yml
+```
+
+```yaml
+name: main
+roles:
+  - main
+```
+
 Run ScoopPlaybook to execure installation.
 
 ```shell
-Import-Module ScoopPlaybook.
+Install-Module PowerShell-Yaml -Scope CurrentUser
+Install-Module ScoopPlaybook -Scope CurrentUser
 Scoop-Playbook
 ```
 
@@ -85,6 +110,43 @@ you can uninstall scoop package via state `absent`.
 ```
 
 more samples? see https://github.com/guitarrapc/local-provisioner/tree/master/envs/windows
+
+## SCHEME
+
+**site.yaml scheme**
+
+Select which role to install/uninstall.
+This file location is where your must run `Scoop-Playbook` Cmdlet.
+
+```yaml
+name: "<string>" # REQUIRED: NAME OF YOUR DEFINITION
+roles:
+  - "<string>" # REQUIRED: ROLE NAME TO CALL
+```
+
+**Role - scoop_install**
+
+Install/Uninstall scoop package from selected bucket.
+
+```yaml
+- name: "<string>" # REQUIRED: name of role
+  scoop_install:
+    state: "present|absent" # OPTIONAL (default "present"): enums of present or absent. present to install, absent to uninstall.
+    bucket: "<string>" # REQUIRED: bucket name to install package.
+    name:
+      - "<string>" # REQUIRED: list of strings to identify package names
+```
+
+**Role - scoop_bucket_install**
+
+Install/Uninstall scoop bucket.
+
+```yaml
+- name: "<string>" # REQUIRED: name of role
+  scoop_bucket_install:
+    state: "present|absent" # OPTIONAL: present to install, absent to uninstall. default "present".
+    bucket: "<string>" # REQUIRED: bucket name to install package.
+```
 
 ## Test 
 
