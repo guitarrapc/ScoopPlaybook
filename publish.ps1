@@ -24,23 +24,24 @@ New-Item -Path $Publish -ItemType Directory -Force > $null
 if (!(Test-Path -Path $path)) {
     Write-Host "Generating manifest."
     $genParams = @{
-        Path                 = $path
-        Guid                 = [Guid]::NewGuid().ToString()
-        PowerShellVersion    = "5.1"
-        Author               = "guitarrapc"
-        ModuleVersion        = $v
-        RootModule           = $rootModule
-        RequiredModules      = @("PowerShell-Yaml")
-        Description          = "PowerShell Module to run scoop like ansible playbook"
-        CompatiblePSEditions = @("Core", "Desktop")
-        FunctionsToExport    = $functionToExport
-        AliasesToExport      = $aliasToExport
-        CmdletsToExport      = @()
-        VariablesToExport    = @()
-        Tags                 = "scoop"
-        ProjectUri           = "https://github.com/guitarrapc/ScoopPlaybook"
-        LicenseUri           = "https://github.com/guitarrapc/ScoopPlaybook/blob/master/LICENSE.md"
-        ReleaseNotes         = "https://github.com/guitarrapc/ScoopPlaybook/releases/tag/$Version"
+        Path                       = $path
+        Guid                       = [Guid]::NewGuid().ToString()
+        PowerShellVersion          = "5.1"
+        Author                     = "guitarrapc"
+        ModuleVersion              = $v
+        RootModule                 = $rootModule
+        Description                = "PowerShell Module to run scoop like ansible playbook"
+        CompatiblePSEditions       = @("Core", "Desktop")
+        FunctionsToExport          = $functionToExport
+        AliasesToExport            = $aliasToExport
+        CmdletsToExport            = @()
+        VariablesToExport          = @()
+        Tags                       = "scoop"
+        ProjectUri                 = "https://github.com/guitarrapc/ScoopPlaybook"
+        LicenseUri                 = "https://github.com/guitarrapc/ScoopPlaybook/blob/master/LICENSE.md"
+        ReleaseNotes               = "https://github.com/guitarrapc/ScoopPlaybook/releases/tag/$Version"
+        # RequiredModules            = @('PowerShell-Yaml') # not work on linux pwsh
+        ExternalModuleDependencies = @("PowerShell-Yaml")
     }
     New-ModuleManifest @genParams
 }
