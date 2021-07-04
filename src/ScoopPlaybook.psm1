@@ -116,12 +116,10 @@ function RuntimeCheck {
                 $package = $state.ToString().Split(":")[0].Trim()
                 $script:updatablePackages.Add($package)
                 PrintChanged -Message "  [!] chck: [scoop-status: (updatable) $package]"
-                $updateSection = $false
             }
             elseif ($removeSection) {
                 $package = $state.ToString().Trim()
                 PrintChanged -Message "  [!] info: [scoop-status: (removable) $package]"
-                $removeSection = $false
             }
             else {
                 PrintInfo -Message "  [o] info: [scoop-status: $state]"
@@ -226,10 +224,10 @@ function RunMain {
                 $module.Remove($([ModuleParams]::name.ToString()))
 
                 # check which module
-                $containsInstall = $module.Contains([Modules]::scoop_install.ToString())
+                $containsAppInstall = $module.Contains([Modules]::scoop_install.ToString())
                 $containsBucketInstall = $module.Contains([Modules]::scoop_bucket_install.ToString())
 
-                if ($containsInstall) {
+                if ($containsAppInstall) {
                     # handle scoop_install
                     $tag = [Modules]::scoop_install
                     if ([string]::IsNullOrWhiteSpace($name)) {
@@ -238,7 +236,7 @@ function RunMain {
                     $header = "TASK [$role : $name]"
                     $marker = "*" * (CalulateSeparator -Message "$header ")
                     PrintInfo -Message "$header $marker"
-                    ScoopModuleStateHandler -Module $module -Tag $tag -Mode $Mode
+                    ScoopAppStateHandler -Module $module -Tag $tag -Mode $Mode
                 }
                 elseif ($containsBucketInstall) {
                     # handle scoop_bucket_install
@@ -322,7 +320,7 @@ function ScoopBucketStateHandler {
     }
 }
 
-function ScoopModuleStateHandler {
+function ScoopAppStateHandler {
     [CmdletBinding()]
     [OutputType([void])]
     param(
@@ -361,10 +359,10 @@ function ScoopModuleStateHandler {
     $tools = $moduleDetail[$([ModuleElement]::name.ToString())]
     switch ($state) {
         $([StateElement]::present) {
-            ScoopInstall -Tools $tools -Tag $Tag -DryRun $dryRun
+            ScoopAppInstall -Tools $tools -Tag $Tag -DryRun $dryRun
         }
         $([StateElement]::absent) {
-            ScoopUninstall -Tools $tools -Tag $Tag -DryRun $dryRun
+            ScoopAppUninstall -Tools $tools -Tag $Tag -DryRun $dryRun
         }
     }
 }
@@ -437,7 +435,7 @@ function ScoopBucketUninstall {
     }
 }
 
-function ScoopInstall {
+function ScoopAppInstall {
     [CmdletBinding()]
     [OutputType([void])]
     param(
@@ -449,80 +447,55 @@ function ScoopInstall {
         [bool]$DryRun
     )
 
+    $prefix = "chng"
+    if ($DryRun) {
+        $prefix = "chck"
+    }
     foreach ($tool in $Tools) {
-        if ($DryRun) {
-            $output = scoop info $tool *>&1
-            # may be typo manifest should throw fast
-            if ($output -match "Could not find manifest for") {
-                PrintFail -Message "  [x] fail: [${Tag}: $tool] => $($output)"
-                throw "ACTION: please make sure your desired manifest '$tool' is available."
-            }
-            # successfully found manifest
-            $installed = $output | Select-String -Pattern "Installed:"
-            if ($installed.Line -match "no") {
-                PrintCheck -Message "  [!] chck: [${Tag}: $tool] => $($installed.Line)"
-            }
-            else {
-                $outputStrict = scoop list $tool *>&1
-                $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
-                if ($null -ne $installedStrictCheck) {
-                    # previous installation was interupped
-                    PrintCheck -Message "  [!] chck: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
-                }
-                else {
-                    $isUpdatable = $updatablePackages -contains $tool
-                    if (!$isUpdatable) {
-                        PrintSkip -Message "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
-                    }
-                    else {
-                        PrintCheck -Message "  [!] chck: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
-                    }
-                    Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"
-                }
-            }
+        $output = scoop info $tool *>&1
+        # may be typo manifest should throw fast
+        if ($output -match "Could not find manifest for") {
+            PrintFail -Message "  [x] fail: [${Tag}: $tool] => $($output)"
+            throw "ACTION: please make sure your desired manifest '$tool' is available."
+        }
+        # successfully found manifest
+        $installed = $output | Select-String -Pattern "Installed:"
+        if ($installed.Line -match "no") {
+            PrintChanged -Message "  [!] ${prefix}: [${Tag}: $tool] => $($installed.Line)"
+            if ($DryRun) { continue }
+            PrintSpace
+            scoop install $tool
         }
         else {
-            $output = scoop info $tool *>&1
-            # may be typo manifest should throw fast
-            if ($output -match "Could not find manifest for") {
-                PrintFail -Message "  [x] fail: [${Tag}: $tool] => $($output)"
-                throw "ACTION: please make sure your desired manifest '$tool' is available."
-            }
-            # successfully found manifest
-            $installed = $output | Select-String -Pattern "Installed:"
-            if ($installed.Line -match "no") {
-                PrintChanged -Message "  [!] chng: [${Tag}: $tool] => $($installed.Line)"
+            $outputStrict = scoop list $tool *>&1
+            $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
+            if ($null -ne $installedStrictCheck) {
+                # previous installation was interupped
+                PrintChanged -Message "  [!] ${prefix}: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
+                if ($DryRun) { continue }
+                PrintSpace
+                scoop uninstall $tool
                 PrintSpace
                 scoop install $tool
             }
             else {
-                $outputStrict = scoop list $tool *>&1
-                $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
-                if ($null -ne $installedStrictCheck) {
-                    # previous installation was interupped
-                    PrintChanged -Message "  [!] chng: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
-                    PrintSpace
-                    scoop uninstall $tool
-                    PrintSpace
-                    scoop install $tool
+                $updatablePackages | ForEach-Object { Write-Verbose "$_" }
+                $isUpdatable = $updatablePackages -contains $tool
+                if (!$isUpdatable) {
+                    PrintSkip -Message "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
                 }
                 else {
-                    $isUpdatable = $updatablePackages -contains $tool
-                    if (!$isUpdatable) {
-                        PrintSkip -Message "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
-                    }
-                    else {
-                        PrintChanged -Message "  [!] chng: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
-                        PrintSpace
-                        scoop update $tool *>&1 | ForEach-Object { PrintInfo -Message $_ }
-                    }
+                    PrintChanged -Message "  [!] ${prefix}: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
+                    if ($DryRun) { continue }
+                    PrintSpace
+                    scoop update $tool *>&1 | ForEach-Object { PrintInfo -Message $_ }
                 }
             }
         }
     }
 }
 
-function ScoopUninstall {
+function ScoopAppUninstall {
     [OutputType([void])]
     param(
         [Parameter(Mandatory = $true)]
