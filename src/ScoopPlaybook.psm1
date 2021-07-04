@@ -116,12 +116,10 @@ function RuntimeCheck {
                 $package = $state.ToString().Split(":")[0].Trim()
                 $script:updatablePackages.Add($package)
                 PrintChanged -Message "  [!] chck: [scoop-status: (updatable) $package]"
-                $updateSection = $false
             }
             elseif ($removeSection) {
                 $package = $state.ToString().Trim()
                 PrintChanged -Message "  [!] info: [scoop-status: (removable) $package]"
-                $removeSection = $false
             }
             else {
                 PrintInfo -Message "  [o] info: [scoop-status: $state]"
@@ -137,6 +135,53 @@ function RuntimeCheck {
     }
 }
 
+function VerifyYaml {
+    [CmdletBinding()]
+    [OutputType([void])]
+    param(
+        [string]$BaseYaml = "site.yml"
+    )
+
+    Write-Verbose "Validate YAML format."
+
+    # Verify Playbook exists
+    if (!(Test-Path $BaseYaml)) {
+        throw [System.IO.FileNotFoundException]::New("File not found. $BaseYaml")
+    }
+    # Verify Playbook is not empty
+    $definitions = Get-Content -LiteralPath $BaseYaml -Raw | ConvertFrom-Yaml
+    if ($null -eq $definitions) {
+        throw [System.FormatException]::New("Playbook format invalid. $BaseYaml is empty.")
+    }
+    # Verify Playbook contains roles section
+    if ($null -eq $definitions[$([PlaybookKeys]::roles.ToString())]) {
+        throw [System.FormatException]::New("Playbook format invalid. $BaseYaml is empty.")
+    }
+
+    $basePath = [System.IO.Path]::GetDirectoryName($BaseYaml)
+
+    # Verify role yaml is valid
+    $roles = @($definitions[$([PlaybookKeys]::roles.ToString())])
+    foreach ($role in $roles) {
+        $taskPath = "$basePath/roles/$role/tasks/"
+        $tasks = Get-ChildItem -LiteralPath "$taskPath" -File | Where-Object { $_.Extension -in @(".yml", ".yaml") }
+        if ($null -eq $tasks) {
+            PrintWarning -Message "No task file found in $taskPath"
+            continue
+        }
+
+        foreach ($task in $tasks.FullName) {
+            $taskDef = Get-Content -LiteralPath "$task" -Raw | ConvertFrom-Yaml
+            if ($null -eq $taskDef) {
+                PrintWarning -Message "No valid task definied in $task"
+                continue
+            }
+        }
+    }
+
+    Write-Verbose "Validation passed. YAML format is valid."
+}
+
 function RunMain {
     [CmdletBinding()]
     [OutputType([void])]
@@ -145,22 +190,8 @@ function RunMain {
         [RunMode]$Mode = [RunMode]::run
     )
 
-    # Verify Playbook exists
-    if (!(Test-Path $BaseYaml)) {
-        throw [System.IO.FileNotFoundException]::New("File not found. $BaseYaml")
-    }
-    # Verify Playbook is not empty
-    $basePath = [System.IO.Path]::GetDirectoryName($BaseYaml)
     $definitions = Get-Content -LiteralPath $BaseYaml -Raw | ConvertFrom-Yaml
-    if ($null -eq $definitions) {
-        PrintInfo -Message "Nothing definied in $BaseYaml"
-        return
-    }
-    # Verify Playbook contains roles section
-    if ($null -eq $definitions[$([PlaybookKeys]::roles.ToString())]) {
-        PrintInfo -Message "No roles definied in $BaseYaml"
-        return
-    }
+    $basePath = [System.IO.Path]::GetDirectoryName($BaseYaml)
 
     # Header
     $playbookName = $definitions[$([PlaybookKeys]::name.ToString())]
@@ -172,8 +203,9 @@ function RunMain {
     # Handle each role
     $roles = @($definitions[$([PlaybookKeys]::roles.ToString())])
     foreach ($role in $roles) {
-        Write-Verbose "Checking role definition from [$basePath/roles/$role/tasks/]"
-        $tasks = Get-ChildItem -LiteralPath "$basePath/roles/$role/tasks/" -File | Where-Object { $_.Extension -in @(".yml", ".yaml") }
+        $taskPath = "$basePath/roles/$role/tasks/"
+        Write-Verbose "Checking role definition from [$taskPath]"
+        $tasks = Get-ChildItem -LiteralPath "$taskPath" -File | Where-Object { $_.Extension -in @(".yml", ".yaml") }
         if ($null -eq $tasks) {
             continue
         }
@@ -183,7 +215,6 @@ function RunMain {
             Write-Verbose "Read from [$task]"
             $taskDef = Get-Content -LiteralPath $task -Raw | ConvertFrom-Yaml
             if ($null -eq $taskDef) {
-                Write-Verbose "No valid task definied in $task"
                 continue
             }
 
@@ -193,10 +224,10 @@ function RunMain {
                 $module.Remove($([ModuleParams]::name.ToString()))
 
                 # check which module
-                $containsInstall = $module.Contains([Modules]::scoop_install.ToString())
+                $containsAppInstall = $module.Contains([Modules]::scoop_install.ToString())
                 $containsBucketInstall = $module.Contains([Modules]::scoop_bucket_install.ToString())
 
-                if ($containsInstall) {
+                if ($containsAppInstall) {
                     # handle scoop_install
                     $tag = [Modules]::scoop_install
                     if ([string]::IsNullOrWhiteSpace($name)) {
@@ -205,7 +236,7 @@ function RunMain {
                     $header = "TASK [$role : $name]"
                     $marker = "*" * (CalulateSeparator -Message "$header ")
                     PrintInfo -Message "$header $marker"
-                    ScoopModuleStateHandler -Module $module -Tag $tag -Mode $Mode
+                    ScoopAppStateHandler -Module $module -Tag $tag -Mode $Mode
                 }
                 elseif ($containsBucketInstall) {
                     # handle scoop_bucket_install
@@ -289,7 +320,7 @@ function ScoopBucketStateHandler {
     }
 }
 
-function ScoopModuleStateHandler {
+function ScoopAppStateHandler {
     [CmdletBinding()]
     [OutputType([void])]
     param(
@@ -328,10 +359,10 @@ function ScoopModuleStateHandler {
     $tools = $moduleDetail[$([ModuleElement]::name.ToString())]
     switch ($state) {
         $([StateElement]::present) {
-            ScoopInstall -Tools $tools -Tag $Tag -DryRun $dryRun
+            ScoopAppInstall -Tools $tools -Tag $Tag -DryRun $dryRun
         }
         $([StateElement]::absent) {
-            ScoopUninstall -Tools $tools -Tag $Tag -DryRun $dryRun
+            ScoopAppUninstall -Tools $tools -Tag $Tag -DryRun $dryRun
         }
     }
 }
@@ -362,15 +393,16 @@ function ScoopBucketInstall {
         [bool]$DryRun
     )
 
+    $prefix = "chng"
+    if ($DryRun) {
+        $prefix = "chck"
+    }
+
     if (!(ScoopBucketExists -Bucket $Bucket)) {
-        if ($DryRun) {
-            PrintCheck -Message "  [!] chck: [${Tag}: $Bucket] => $Source (installed: $false)"
-        }
-        else {
-            PrintChanged -Message "  [!] chng: [${Tag}: $Bucket] => $Source (installed: $false)"
-            PrintSpace
-            scoop bucket add $Bucket $Source
-        }
+        PrintChanged -Message "  [!] ${prefix}: [${Tag}: $Bucket] => $Source (installed: $false)"
+        if ($DryRun) { continue }
+        PrintSpace
+        scoop bucket add "$Bucket" "$Source"
     }
     else {
         PrintSkip -Message "  [o] skip: [${Tag}: $Bucket]"
@@ -389,22 +421,23 @@ function ScoopBucketUninstall {
         [bool]$DryRun
     )
 
+    $prefix = "chng"
+    if ($DryRun) {
+        $prefix = "chck"
+    }
+
     if (ScoopBucketExists -Bucket $Bucket) {
-        if ($DryRun) {
-            PrintCheck -Message "  [!] chck: [${Tag}: $Bucket] (installed: $false)"
-        }
-        else {
-            PrintChanged -Message "  [!] chng: [${Tag}: $Bucket] (installed: $false)"
-            PrintSpace
-            scoop bucket rm $Bucket
-        }
+        PrintChanged -Message "  [!] ${prefix}: [${Tag}: $Bucket] (installed: $false)"
+        if ($DryRun) { continue }
+        PrintSpace
+        scoop bucket rm $Bucket
     }
     else {
         PrintSkip -Message "  [o] skip: [${Tag}: $Bucket]"
     }
 }
 
-function ScoopInstall {
+function ScoopAppInstall {
     [CmdletBinding()]
     [OutputType([void])]
     param(
@@ -416,80 +449,56 @@ function ScoopInstall {
         [bool]$DryRun
     )
 
+    $prefix = "chng"
+    if ($DryRun) {
+        $prefix = "chck"
+    }
+
     foreach ($tool in $Tools) {
-        if ($DryRun) {
-            $output = scoop info $tool *>&1
-            # may be typo manifest should throw fast
-            if ($output -match "Could not find manifest for") {
-                PrintFail -Message "  [x] fail: [${Tag}: $tool] => $($output)"
-                throw "ACTION: please make sure your desired manifest '$tool' is available."
-            }
-            # successfully found manifest
-            $installed = $output | Select-String -Pattern "Installed:"
-            if ($installed.Line -match "no") {
-                PrintCheck -Message "  [!] chck: [${Tag}: $tool] => $($installed.Line)"
-            }
-            else {
-                $outputStrict = scoop list $tool *>&1
-                $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
-                if ($null -ne $installedStrictCheck) {
-                    # previous installation was interupped
-                    PrintCheck -Message "  [!] chck: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
-                }
-                else {
-                    $isUpdatable = $updatablePackages -contains $tool
-                    if (!$isUpdatable) {
-                        PrintSkip -Message "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
-                    }
-                    else {
-                        PrintCheck -Message "  [!] chck: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
-                    }
-                    Write-Verbose "$($installed.Line)$($output[$installed.LineNumber++])"
-                }
-            }
+        $output = scoop info $tool *>&1
+        # may be typo manifest should throw fast
+        if ($output -match "Could not find manifest for") {
+            PrintFail -Message "  [x] fail: [${Tag}: $tool] => $($output)"
+            throw "ACTION: please make sure your desired manifest '$tool' is available."
+        }
+        # successfully found manifest
+        $installed = $output | Select-String -Pattern "Installed:"
+        if ($installed.Line -match "no") {
+            PrintChanged -Message "  [!] ${prefix}: [${Tag}: $tool] => $($installed.Line)"
+            if ($DryRun) { continue }
+            PrintSpace
+            scoop install $tool
         }
         else {
-            $output = scoop info $tool *>&1
-            # may be typo manifest should throw fast
-            if ($output -match "Could not find manifest for") {
-                PrintFail -Message "  [x] fail: [${Tag}: $tool] => $($output)"
-                throw "ACTION: please make sure your desired manifest '$tool' is available."
-            }
-            # successfully found manifest
-            $installed = $output | Select-String -Pattern "Installed:"
-            if ($installed.Line -match "no") {
-                PrintChanged -Message "  [!] chng: [${Tag}: $tool] => $($installed.Line)"
+            $outputStrict = scoop list $tool *>&1
+            $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
+            if ($null -ne $installedStrictCheck) {
+                # previous installation was interupped
+                PrintChanged -Message "  [!] ${prefix}: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
+                if ($DryRun) { continue }
+                PrintSpace
+                scoop uninstall $tool
                 PrintSpace
                 scoop install $tool
             }
             else {
-                $outputStrict = scoop list $tool *>&1
-                $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
-                if ($null -ne $installedStrictCheck) {
-                    # previous installation was interupped
-                    PrintChanged -Message "  [!] chng: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
-                    PrintSpace
-                    scoop uninstall $tool
-                    PrintSpace
-                    scoop install $tool
+                $updatablePackages | ForEach-Object { Write-Verbose "$_" }
+                $isUpdatable = $updatablePackages -contains $tool
+                if (!$isUpdatable) {
+                    PrintSkip -Message "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
                 }
                 else {
-                    $isUpdatable = $updatablePackages -contains $tool
-                    if (!$isUpdatable) {
-                        PrintSkip -Message "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
-                    }
-                    else {
-                        PrintChanged -Message "  [!] chng: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
-                        PrintSpace
-                        scoop update $tool *>&1 | ForEach-Object { PrintInfo -Message $_ }
-                    }
+                    PrintChanged -Message "  [!] ${prefix}: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
+                    if ($DryRun) { continue }
+                    PrintSpace
+                    scoop update $tool *>&1 | ForEach-Object { PrintInfo -Message $_ }
                 }
             }
         }
     }
 }
 
-function ScoopUninstall {
+function ScoopAppUninstall {
     [OutputType([void])]
     param(
         [Parameter(Mandatory = $true)]
@@ -506,29 +515,23 @@ function ScoopUninstall {
         continue
     }
 
+    $prefix = "chng"
+    if ($DryRun) {
+        $prefix = "chck"
+    }
+
     foreach ($tool in $tools) {
-        if ($DryRun) {
-            $output = scoop info $tool
-            $installed = $output | Select-String -Pattern "Installed:"
-            if ($installed.Line -match "no") {
-                PrintSkip -Message "  [o] skip: [${Tag}: $tool] => Already uninstalled"
-                Write-Verbose $installed.Line
-            }
-            else {
-                PrintCheck -Message "  [!] chck: [${Tag}: $tool] => Require uninstall"
-                PrintCheck -Message "$($installed.Line)$($output[++$installed.LineNumber])"
-            }
+        $output = scoop info $tool
+        $installed = $output | Select-String -Pattern "Installed:"
+        if ($installed.Line -match "no") {
+            PrintSkip -Message "  [o] skip: [${Tag}: $tool] => Already uninstalled"
+            Write-Verbose $installed.Line
         }
         else {
-            $output = scoop info $tool
-            $installed = $output | Select-String -Pattern "Installed:"
-            if ($installed.Line -match "no") {
-                PrintSkip -Message "  [o] skip: [${Tag}: $tool] => Already uninstalled"
-            }
-            else {
-                PrintChanged -Message "  [!] chng: [${Tag}: $tool] => Require uninstall"
-                scoop uninstall $tool
-            }
+            PrintChanged -Message "  [!] ${prefix}: [${Tag}: $tool] => Require uninstall"
+            Write-Verbose $installed.Line
+            if ($DryRun) { continue }
+            scoop uninstall $tool
         }
     }
 }
@@ -577,6 +580,7 @@ function Invoke-ScoopPlaybook {
 
     # run
     try {
+        VerifyYaml -BaseYaml $LiteralPath
         RunMain -BaseYaml $LiteralPath -Mode $Mode
     }
     catch [Exception] {

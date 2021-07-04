@@ -38,56 +38,14 @@ InModuleScope "ScoopPlaybook" {
                 }
             }
         }
-        Describe "PlaybookTest skip pattern" {
-            Context "When site.yaml is empty" {
-                BeforeEach {
-                    Mock Write-Host { } -Verifiable
-                }
-                It "verify empty playbook should not throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "$env:templatePath/empty.yml" -Mode $env:MODE } | Should -Not -Throw
-                }
-                It "verify empty playbook should return null (mode: $env:Mode)" {
-                    RunMain -BaseYaml "$env:templatePath/empty.yml" -Mode $env:MODE | Should -BeNullOrEmpty 
-                }
-            }
-            Context "When site.yaml role is missing" {
-                BeforeEach {
-                    Mock Write-Host { } -Verifiable
-                }
-                It "verify missing role playbook should throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "$env:templatePath/missingrole.yml" -Mode $env:MODE } | Should -Not -Throw
-                }
-                It "verify missing role playbook should return null (mode: $env:Mode)" {
-                    RunMain -BaseYaml "$env:templatePath/missingrole.yml" -Mode $env:MODE | Should -BeNullOrEmpty
-                }
-            }
-            Context "When site.yaml target invalid role name" {
-                BeforeEach {
-                    Mock Write-Host { } -Verifiable
-                }
-                It "verify invalid role playbook should throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "$env:templatePath/invalidrole.yml" -Mode $env:MODE } | Should -Not -Throw
-                }
-                It "verify invalid role playbook should return null (mode: $env:Mode)" {
-                    RunMain -BaseYaml "$env:templatePath/invalidrole.yml" -Mode $env:MODE | Should -BeNullOrEmpty
-                }
-            }
-            Context "When task file is missing" {
-                BeforeEach {
-                    Mock Write-Host { } -Verifiable
-                }
-                It "verify no task should not throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "$env:templatePath/notaskfile.yml" -Mode $env:MODE } | Should -Not -Throw
-                }
-            }
-        }
-        Describe "PlaybookTest fail pattern" {
+        
+        Describe "Playbook Verify fail pattern" {
             Context "When site.yaml is not exists" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
                 It "not existing playbook should throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "noneexitpath.yml" -Mode $env:MODE } | Should -Throw
+                    { VerifyYaml -BaseYaml "noneexitpath.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
             Context "When tasks dir is missing" {
@@ -95,9 +53,44 @@ InModuleScope "ScoopPlaybook" {
                     Mock Write-Host { } -Verifiable
                 }
                 It "verify no task dir should throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "$env:templatePath/notaskdir.yml" -Mode $env:MODE } | Should -Throw
+                    { VerifyYaml -BaseYaml "$env:templatePath/notaskdir.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
+            Context "When site.yaml is empty" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "verify empty playbook should throw (mode: $env:Mode)" {
+                    { VerifyYaml -BaseYaml "$env:templatePath/empty.yml" -Mode $env:MODE } | Should -Throw
+                }
+            }
+            Context "When site.yaml role is missing" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "verify missing role playbook should throw (mode: $env:Mode)" {
+                    { VerifyYaml -BaseYaml "$env:templatePath/missingrole.yml" -Mode $env:MODE } | Should -Throw
+                }
+            }
+            Context "When site.yaml target invalid role name" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "verify invalid role playbook should throw (mode: $env:Mode)" {
+                    { VerifyYaml -BaseYaml "$env:templatePath/invalidrole.yml" -Mode $env:MODE } | Should -Throw
+                }
+            }
+            Context "When task file is missing" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "verify no task should not throw (mode: $env:Mode)" {
+                    { VerifyYaml -BaseYaml "$env:templatePath/notaskfile.yml" -Mode $env:MODE } | Should -Throw
+                }
+            }
+        }
+
+        Describe "PlaybookTest fail pattern" {
             Context "When package is not exists in task" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
