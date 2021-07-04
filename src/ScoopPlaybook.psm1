@@ -113,6 +113,11 @@ function RuntimeCheck {
             $removeSection = $false
             PrintInfo -Message "  [o] info: [scoop-status: $state]"
         }
+        elseif ($state -match "Everything is ok") {
+            $updateSection = $false
+            $removeSection = $false
+            PrintInfo -Message "  [o] info: [scoop-status: $state]"
+        }
         else {
             if ($updateSection) {
                 $package = $state.ToString().Split(":")[0].Trim()
