@@ -137,6 +137,53 @@ function RuntimeCheck {
     }
 }
 
+function VerifyYaml {
+    [CmdletBinding()]
+    [OutputType([void])]
+    param(
+        [string]$BaseYaml = "site.yml"
+    )
+
+    Write-Verbose "Validate YAML format."
+
+    # Verify Playbook exists
+    if (!(Test-Path $BaseYaml)) {
+        throw [System.IO.FileNotFoundException]::New("File not found. $BaseYaml")
+    }
+    # Verify Playbook is not empty
+    $definitions = Get-Content -LiteralPath $BaseYaml -Raw | ConvertFrom-Yaml
+    if ($null -eq $definitions) {
+        throw [System.FormatException]::New("Playbook format invalid. Nothing definied in $BaseYaml")
+    }
+    # Verify Playbook contains roles section
+    if ($null -eq $definitions[$([PlaybookKeys]::roles.ToString())]) {
+        throw [System.FormatException]::New("Playbook format invalid. No roles definied in $BaseYaml")
+    }
+
+    $basePath = [System.IO.Path]::GetDirectoryName($BaseYaml)
+
+    # Verify role yaml is valid
+    $roles = @($definitions[$([PlaybookKeys]::roles.ToString())])
+    foreach ($role in $roles) {
+        $taskPath = "$basePath/roles/$role/tasks/"
+        $tasks = Get-ChildItem -LiteralPath "$taskPath" -File | Where-Object { $_.Extension -in @(".yml", ".yaml") }
+        if ($null -eq $tasks) {
+            PrintWarning -Message "No task file found in $taskPath"
+            continue
+        }
+
+        foreach ($task in $tasks.FullName) {
+            $taskDef = Get-Content -LiteralPath "$task" -Raw | ConvertFrom-Yaml
+            if ($null -eq $taskDef) {
+                PrintWarning -Message "No valid task definied in $task"
+                continue
+            }
+        }
+    }
+
+    Write-Verbose "Validation passed. YAML format is valid."
+}
+
 function RunMain {
     [CmdletBinding()]
     [OutputType([void])]
@@ -145,22 +192,8 @@ function RunMain {
         [RunMode]$Mode = [RunMode]::run
     )
 
-    # Verify Playbook exists
-    if (!(Test-Path $BaseYaml)) {
-        throw [System.IO.FileNotFoundException]::New("File not found. $BaseYaml")
-    }
-    # Verify Playbook is not empty
-    $basePath = [System.IO.Path]::GetDirectoryName($BaseYaml)
     $definitions = Get-Content -LiteralPath $BaseYaml -Raw | ConvertFrom-Yaml
-    if ($null -eq $definitions) {
-        PrintInfo -Message "Nothing definied in $BaseYaml"
-        return
-    }
-    # Verify Playbook contains roles section
-    if ($null -eq $definitions[$([PlaybookKeys]::roles.ToString())]) {
-        PrintInfo -Message "No roles definied in $BaseYaml"
-        return
-    }
+    $basePath = [System.IO.Path]::GetDirectoryName($BaseYaml)
 
     # Header
     $playbookName = $definitions[$([PlaybookKeys]::name.ToString())]
@@ -172,8 +205,9 @@ function RunMain {
     # Handle each role
     $roles = @($definitions[$([PlaybookKeys]::roles.ToString())])
     foreach ($role in $roles) {
-        Write-Verbose "Checking role definition from [$basePath/roles/$role/tasks/]"
-        $tasks = Get-ChildItem -LiteralPath "$basePath/roles/$role/tasks/" -File | Where-Object { $_.Extension -in @(".yml", ".yaml") }
+        $taskPath = "$basePath/roles/$role/tasks/"
+        Write-Verbose "Checking role definition from [$taskPath]"
+        $tasks = Get-ChildItem -LiteralPath "$taskPath" -File | Where-Object { $_.Extension -in @(".yml", ".yaml") }
         if ($null -eq $tasks) {
             continue
         }
@@ -183,7 +217,6 @@ function RunMain {
             Write-Verbose "Read from [$task]"
             $taskDef = Get-Content -LiteralPath $task -Raw | ConvertFrom-Yaml
             if ($null -eq $taskDef) {
-                Write-Verbose "No valid task definied in $task"
                 continue
             }
 
@@ -577,6 +610,7 @@ function Invoke-ScoopPlaybook {
 
     # run
     try {
+        VerifyYaml -BaseYaml $LiteralPath
         RunMain -BaseYaml $LiteralPath -Mode $Mode
     }
     catch [Exception] {
