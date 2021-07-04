@@ -151,11 +151,11 @@ function VerifyYaml {
     # Verify Playbook is not empty
     $definitions = Get-Content -LiteralPath $BaseYaml -Raw | ConvertFrom-Yaml
     if ($null -eq $definitions) {
-        throw [System.FormatException]::New("Playbook format invalid. Nothing definied in $BaseYaml")
+        throw [System.FormatException]::New("Playbook format invalid. $BaseYaml is empty.")
     }
     # Verify Playbook contains roles section
     if ($null -eq $definitions[$([PlaybookKeys]::roles.ToString())]) {
-        throw [System.FormatException]::New("Playbook format invalid. No roles definied in $BaseYaml")
+        throw [System.FormatException]::New("Playbook format invalid. $BaseYaml is empty.")
     }
 
     $basePath = [System.IO.Path]::GetDirectoryName($BaseYaml)
