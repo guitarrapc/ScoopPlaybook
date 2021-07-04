@@ -393,15 +393,16 @@ function ScoopBucketInstall {
         [bool]$DryRun
     )
 
+    $prefix = "chng"
+    if ($DryRun) {
+        $prefix = "chck"
+    }
+
     if (!(ScoopBucketExists -Bucket $Bucket)) {
-        if ($DryRun) {
-            PrintCheck -Message "  [!] chck: [${Tag}: $Bucket] => $Source (installed: $false)"
-        }
-        else {
-            PrintChanged -Message "  [!] chng: [${Tag}: $Bucket] => $Source (installed: $false)"
-            PrintSpace
-            scoop bucket add $Bucket $Source
-        }
+        PrintChanged -Message "  [!] ${prefix}: [${Tag}: $Bucket] => $Source (installed: $false)"
+        if ($DryRun) { continue }
+        PrintSpace
+        scoop bucket add "$Bucket" "$Source"
     }
     else {
         PrintSkip -Message "  [o] skip: [${Tag}: $Bucket]"
@@ -420,15 +421,16 @@ function ScoopBucketUninstall {
         [bool]$DryRun
     )
 
+    $prefix = "chng"
+    if ($DryRun) {
+        $prefix = "chck"
+    }
+
     if (ScoopBucketExists -Bucket $Bucket) {
-        if ($DryRun) {
-            PrintCheck -Message "  [!] chck: [${Tag}: $Bucket] (installed: $false)"
-        }
-        else {
-            PrintChanged -Message "  [!] chng: [${Tag}: $Bucket] (installed: $false)"
-            PrintSpace
-            scoop bucket rm $Bucket
-        }
+        PrintChanged -Message "  [!] ${prefix}: [${Tag}: $Bucket] (installed: $false)"
+        if ($DryRun) { continue }
+        PrintSpace
+        scoop bucket rm $Bucket
     }
     else {
         PrintSkip -Message "  [o] skip: [${Tag}: $Bucket]"
@@ -451,6 +453,7 @@ function ScoopAppInstall {
     if ($DryRun) {
         $prefix = "chck"
     }
+
     foreach ($tool in $Tools) {
         $output = scoop info $tool *>&1
         # may be typo manifest should throw fast
@@ -512,29 +515,23 @@ function ScoopAppUninstall {
         continue
     }
 
+    $prefix = "chng"
+    if ($DryRun) {
+        $prefix = "chck"
+    }
+
     foreach ($tool in $tools) {
-        if ($DryRun) {
-            $output = scoop info $tool
-            $installed = $output | Select-String -Pattern "Installed:"
-            if ($installed.Line -match "no") {
-                PrintSkip -Message "  [o] skip: [${Tag}: $tool] => Already uninstalled"
-                Write-Verbose $installed.Line
-            }
-            else {
-                PrintCheck -Message "  [!] chck: [${Tag}: $tool] => Require uninstall"
-                PrintCheck -Message "$($installed.Line)$($output[++$installed.LineNumber])"
-            }
+        $output = scoop info $tool
+        $installed = $output | Select-String -Pattern "Installed:"
+        if ($installed.Line -match "no") {
+            PrintSkip -Message "  [o] skip: [${Tag}: $tool] => Already uninstalled"
+            Write-Verbose $installed.Line
         }
         else {
-            $output = scoop info $tool
-            $installed = $output | Select-String -Pattern "Installed:"
-            if ($installed.Line -match "no") {
-                PrintSkip -Message "  [o] skip: [${Tag}: $tool] => Already uninstalled"
-            }
-            else {
-                PrintChanged -Message "  [!] chng: [${Tag}: $tool] => Require uninstall"
-                scoop uninstall $tool
-            }
+            PrintChanged -Message "  [!] ${prefix}: [${Tag}: $tool] => Require uninstall"
+            Write-Verbose $installed.Line
+            if ($DryRun) { continue }
+            scoop uninstall $tool
         }
     }
 }
