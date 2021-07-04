@@ -88,6 +88,8 @@ function RuntimeCheck {
     [OutputType([void])]
     param ()
 
+    $script:updatablePackages.Clear()
+
     # scoop status check
     $status = scoop status *>&1
     if (!$?) {
