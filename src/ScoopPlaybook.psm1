@@ -105,10 +105,10 @@ function UpdateScoop {
                 PrintInfo -Message "[scoop-update]: $update"
             }
             elseif ($update -match "Updating .*") {
-                PrintChanged -Message "[scoop-update]: $update"
+                PrintOk -Message "[scoop-update]: $update"
             }
             else {
-                PrintInfo -Message "[scoop-update]: $update"
+                PrintChanged -Message "[scoop-update]: $update"
             }
         }
     }
