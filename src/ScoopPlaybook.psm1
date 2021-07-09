@@ -227,7 +227,7 @@ function Validate {
             PrintWarning -Message "[validate] No task file found, role will skip. role: $role ($taskPath)"
             continue
         }
-        Write-Verbose "[validate] $(($tasks | Measure).Count) tasks found. role: $role ($taskPath)"
+        Write-Verbose "[validate] $(($tasks | Measure-Object).Count) tasks found. role: $role ($taskPath)"
 
         foreach ($task in $tasks.FullName) {
             $taskDef = Get-Content -LiteralPath "$task" -Raw | ConvertFrom-Yaml
