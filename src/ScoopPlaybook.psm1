@@ -223,7 +223,7 @@ function Validate {
             PrintWarning -Message "No task file found. ($taskPath)"
             continue
         }
-        Write-Verbose "[validate] Task file found. ($taskPath)"
+        Write-Verbose "[validate] $(($tasks | Measure).Count) tasks found. ($taskPath)"
 
         foreach ($task in $tasks.FullName) {
             $taskDef = Get-Content -LiteralPath "$task" -Raw | ConvertFrom-Yaml
@@ -238,9 +238,9 @@ function Validate {
                     throw [System.FormatException]::New("Invalid Playbook format detected. Module not found in definition. ($task)")
                 }
 
-                foreach ($item in $modules.Keys) {
-                    if ([Enum]::GetValues([Modules]) -notcontains $item) {
-                        throw [System.FormatException]::New("Invalid Playbook format detected. Module `"$($modules.Keys -join ',')`" not found in definition. Allowed values are $([Enum]::GetValues([Modules]) -join ', ') ($task)")
+                foreach ($key in $modules.Keys) {
+                    if ([Enum]::GetValues([Modules]) -notcontains $key) {
+                        throw [System.FormatException]::New("Invalid Playbook format detected. Module '$key' not found in definition. Allowed values are $([Enum]::GetValues([Modules]) -join ', ') ($task)")
                     }
                     # todo: module type check. (ConvertFrom-Yaml Deserializer is not good in PowerShell....)
                 }
