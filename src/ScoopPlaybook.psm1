@@ -60,7 +60,7 @@ function Print([LogLevel]$LogLevel, [string]$Message) {
             Write-Host -ForegroundColor Yellow "  changed: $Message"
         }
         $([LogLevel]::fail) {
-            Write-Host -ForegroundColor Red "$Message"
+            Write-Host -ForegroundColor Red "  fail: $Message"
         }
         $([LogLevel]::header) {
             Write-Host "$Message"
@@ -450,13 +450,13 @@ function ScoopBucketInstall {
     )
 
     if (!(ScoopBucketExists -Bucket $Bucket)) {
-        PrintChanged -Message "[${Tag}]: $Bucket => $Source (installed: $false)"
+        PrintChanged -Message "[${Tag}]: $Bucket => $Source (Require install)"
         if ($DryRun) { continue }
         PrintSpace
         scoop bucket add "$Bucket" "$Source"
     }
     else {
-        PrintOk -Message "[${Tag}: $Bucket]"
+        PrintOk -Message "[${Tag}]: $Bucket"
     }
 }
 
@@ -473,13 +473,13 @@ function ScoopBucketUninstall {
     )
 
     if (ScoopBucketExists -Bucket $Bucket) {
-        PrintChanged -Message "[${Tag}: $Bucket] (installed: $false)"
+        PrintChanged -Message "[${Tag}]: $Bucket (Require uninstall)"
         if ($DryRun) { continue }
         PrintSpace
         scoop bucket rm $Bucket
     }
     else {
-        PrintOk -Message "[${Tag}: $Bucket]"
+        PrintOk -Message "[${Tag}]: $Bucket"
     }
 }
 
@@ -499,7 +499,7 @@ function ScoopAppInstall {
         $output = scoop info $tool *>&1
         # may be typo manifest should throw fast
         if ($output -match "Could not find manifest for") {
-            PrintFail -Message "  [x] fail: [${Tag}]: $tool => $($output)"
+            PrintFail -Message "[${Tag}]: $tool => $($output)"
             throw "ACTION: please make sure your desired manifest '$tool' is available."
         }
         # successfully found manifest
@@ -569,8 +569,13 @@ function ScoopAppUninstall {
     }
 
     foreach ($tool in $tools) {
-        $output = scoop info $tool
+        $output = scoop info $tool *>&1
         $installed = $output | Select-String -Pattern "Installed:"
+        if ($null -eq $installed) {
+            PrintFail -Message "[${Tag}]: $tool => $output"
+            return
+        }
+
         if ($installed.Line -match "no") {
             PrintOk -Message "[${Tag}]: $tool => Already uninstalled"
             Write-Verbose $installed.Line
