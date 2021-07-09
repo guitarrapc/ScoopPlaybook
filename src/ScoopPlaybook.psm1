@@ -220,32 +220,32 @@ function Validate {
         $taskPath = "$basePath/roles/$role/tasks/"
         $tasks = Get-ChildItem -LiteralPath "$taskPath" -File | Where-Object { $_.Extension -in @(".yml", ".yaml") }
         if ($null -eq $tasks) {
-            PrintWarning -Message "No task file found. ($taskPath)"
+            PrintWarning -Message "[validate] No task file found, role will skip. role: $role ($taskPath)"
             continue
         }
-        Write-Verbose "[validate] $(($tasks | Measure).Count) tasks found. ($taskPath)"
+        Write-Verbose "[validate] $(($tasks | Measure).Count) tasks found. role: $role ($taskPath)"
 
         foreach ($task in $tasks.FullName) {
             $taskDef = Get-Content -LiteralPath "$task" -Raw | ConvertFrom-Yaml
             if ($null -eq $taskDef) {
-                PrintWarning -Message "No valid task definied. ($task)"
+                PrintWarning -Message "[validate] No valid task definied. task will skip. role: $role ($task)"
                 continue
             }
             foreach ($modules in $taskDef) {
                 # Verify any modules are defined
                 $modules.Remove($([ModuleParams]::name.ToString()))
                 if ($modules.Keys.Count -eq 0) {
-                    throw [System.FormatException]::New("Invalid Playbook format detected. Module not found in definition. ($task)")
+                    throw [System.FormatException]::New("Invalid Playbook format detected. Module not found in definition. role: $role ($task)")
                 }
 
                 foreach ($key in $modules.Keys) {
                     if ([Enum]::GetValues([Modules]) -notcontains $key) {
-                        throw [System.FormatException]::New("Invalid Playbook format detected. Module '$key' not found in definition. Allowed values are $([Enum]::GetValues([Modules]) -join ', ') ($task)")
+                        throw [System.FormatException]::New("Invalid Playbook format detected. Module '$key' not found in definition. Allowed values are $([Enum]::GetValues([Modules]) -join ', ') role: $role ($task)")
                     }
                     # todo: module type check. (ConvertFrom-Yaml Deserializer is not good in PowerShell....)
                 }
             }
-            PrintOk -Message "[validate] Task is valid. ($task)"
+            PrintOk -Message "[validate] Task is valid. role: $role ($task)"
         }
     }
     PrintInfo -Message "[validate] Validation passed. YAML format is valid."
