@@ -643,7 +643,7 @@ function Invoke-ScoopPlaybook {
         RunMain -BaseYaml "$path" -Mode $Mode
     }
     catch [Exception] {
-        PrintSkip -Message "ScriptStackTrace Detail: $($_.GetType()) $($_.ScriptStackTrace)"
+        PrintFail -Message "ScriptStackTrace Detail: $($_.GetType()) $($_.ScriptStackTrace)"
         throw
     }
 }
