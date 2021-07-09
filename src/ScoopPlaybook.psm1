@@ -231,16 +231,16 @@ function Validate {
                 PrintWarning -Message "No valid task definied. ($task)"
                 continue
             }
-            foreach ($module in $taskDef) {
-                # Verify module is specified
-                $module.Remove($([ModuleParams]::name.ToString()))
-                if ($module.Keys.Count -eq 0) {
+            foreach ($modules in $taskDef) {
+                # Verify any modules are defined
+                $modules.Remove($([ModuleParams]::name.ToString()))
+                if ($modules.Keys.Count -eq 0) {
                     throw [System.FormatException]::New("Invalid Playbook format detected. Module not found in definition. ($task)")
                 }
 
-                foreach ($item in $module.Keys) {
+                foreach ($item in $modules.Keys) {
                     if ([Enum]::GetValues([Modules]) -notcontains $item) {
-                        throw [System.FormatException]::New("Invalid Playbook format detected. Module `"$($module.Keys -join ',')`" not found in definition. Allowed values are $([Enum]::GetValues([Modules]) -join ', ') ($task)")
+                        throw [System.FormatException]::New("Invalid Playbook format detected. Module `"$($modules.Keys -join ',')`" not found in definition. Allowed values are $([Enum]::GetValues([Modules]) -join ', ') ($task)")
                     }
                     # todo: module type check. (ConvertFrom-Yaml Deserializer is not good in PowerShell....)
                 }
@@ -289,14 +289,14 @@ function RunMain {
                 continue
             }
 
-            # Handle each module
-            foreach ($module in $taskDef) {
-                $name = $module[$([ModuleParams]::name.ToString())]
-                $module.Remove($([ModuleParams]::name.ToString()))
+            # Handle modules
+            foreach ($modules in $taskDef) {
+                $name = $modules[$([ModuleParams]::name.ToString())]
+                $modules.Remove($([ModuleParams]::name.ToString()))
 
                 # check which module
-                $containsAppInstall = $module.Contains([Modules]::scoop_install.ToString())
-                $containsBucketInstall = $module.Contains([Modules]::scoop_bucket_install.ToString())
+                $containsAppInstall = $modules.Contains([Modules]::scoop_install.ToString())
+                $containsBucketInstall = $modules.Contains([Modules]::scoop_bucket_install.ToString())
 
                 if ($containsAppInstall) {
                     # handle scoop_install
@@ -307,7 +307,7 @@ function RunMain {
                     $header = "TASK [$role : $name]"
                     $marker = "*" * (CalulateSeparator -Message "$header ")
                     PrintHeader -Message "$header $marker"
-                    ScoopAppStateHandler -Module $module -Tag $tag -Mode $Mode
+                    ScoopAppStateHandler -Modules $modules -Tag $tag -Mode $Mode
                 }
                 elseif ($containsBucketInstall) {
                     # handle scoop_bucket_install
@@ -318,13 +318,13 @@ function RunMain {
                     $header = "TASK [$role : $name]"
                     $marker = "*" * (CalulateSeparator -Message "$header ")
                     PrintHeader -Message "$header $marker"
-                    ScoopBucketStateHandler -Module $module -Tag $tag -Mode $Mode
+                    ScoopBucketStateHandler -Modules $modules -Tag $tag -Mode $Mode
                 }
                 else {
                     $header = "TASK [$role : $name]"
                     $marker = "*" * (CalulateSeparator -Message "$header ")
                     PrintHeader -Message "$header $marker"
-                    if ($module.Keys.Count -eq 0) {
+                    if ($modules.Keys.Count -eq 0) {
                         PrintWarning -Message "module not specified."
                         continue
                     }
@@ -341,33 +341,33 @@ function ScoopBucketStateHandler {
     [OutputType([void])]
     param(
         [Parameter(Mandatory = $true)]
-        [HashTable]$Module,
+        [HashTable]$Modules,
         [Parameter(Mandatory = $true)]
         [Modules]$Tag,
         [Parameter(Mandatory = $true)]
         [RunMode]$Mode
     )
 
-    $moduleDetail = $Module["$Tag"]
+    $module = $Modules["$Tag"]
 
     # blank definition
-    # hash table null should detect with string cast..... orz
-    if ([string]::IsNullOrWhiteSpace($moduleDetail)) {
+    # hack: hash table null should detect with string cast.....
+    if ([string]::IsNullOrWhiteSpace($module)) {
         Write-Verbose "no valid module defined"
         return
     }
 
     # set default bucket
-    if ($null -eq $moduleDetail.bucket) {
-        $moduleDetail.bucket = "main"
+    if ($null -eq $module.bucket) {
+        $module.bucket = "main"
     }
     # set default source
-    if (!$moduleDetail.ContainsKey("source")) {
-        $moduleDetail["source"] = ""
+    if (!$module.ContainsKey("source")) {
+        $module["source"] = ""
     }
 
     # pick up state and switch to install/uninstall
-    $state = $moduleDetail[$([ModuleElement]::state.ToString())]
+    $state = $module[$([ModuleElement]::state.ToString())]
     if ($null -eq $state) {
         $state = [StateElement]::present
     }
@@ -375,15 +375,15 @@ function ScoopBucketStateHandler {
     $dryRun = $Mode -eq [RunMode]::check
     switch ($state) {
         $([StateElement]::present) {
-            if ([string]::IsNullOrWhiteSpace($moduleDetail.source)) {
-                ScoopBucketInstall -Bucket $moduleDetail.bucket -Tag $Tag -DryRun $dryRun
+            if ([string]::IsNullOrWhiteSpace($module.source)) {
+                ScoopBucketInstall -Bucket $module.bucket -Tag $Tag -DryRun $dryRun
             }
             else {
-                ScoopBucketInstall -Bucket $moduleDetail.bucket -Source $moduleDetail.source -Tag $Tag -DryRun $dryRun
+                ScoopBucketInstall -Bucket $module.bucket -Source $module.source -Tag $Tag -DryRun $dryRun
             }
         }
         $([StateElement]::absent) {
-            ScoopBucketUninstall -Bucket $moduleDetail.bucket -Tag $Tag -DryRun $dryRun
+            ScoopBucketUninstall -Bucket $module.bucket -Tag $Tag -DryRun $dryRun
         }
     }
 }
@@ -393,38 +393,38 @@ function ScoopAppStateHandler {
     [OutputType([void])]
     param(
         [Parameter(Mandatory = $true)]
-        [HashTable]$Module,
+        [HashTable]$Modules,
         [Parameter(Mandatory = $true)]
         [Modules]$Tag,
         [Parameter(Mandatory = $true)]
         [RunMode]$Mode
     )
 
-    $moduleDetail = $Module["$Tag"]
+    $module = $Modules["$Tag"]
 
     # blank definition
-    # hash table null should detect with string cast..... orz
-    if ([string]::IsNullOrWhiteSpace($moduleDetail)) {
+    # hack: hash table null should detect with string cast.....
+    if ([string]::IsNullOrWhiteSpace($module)) {
         Write-Verbose "no valid module defined"
         return
     }
 
     # install bucket
-    if ($null -eq $moduleDetail.bucket) {
-        $moduleDetail.bucket = "main"
+    if ($null -eq $module.bucket) {
+        $module.bucket = "main"
     }
-    if (!(ScoopBucketExists -Bucket $moduleDetail.bucket)) {
-        throw "erro: [${Tag}]: $($moduleDetail.bucket) => no matching bucket found."
+    if (!(ScoopBucketExists -Bucket $module.bucket)) {
+        throw "erro: [${Tag}]: $($module.bucket) => no matching bucket found."
     }
 
     # pick up state and switch to install/uninstall
-    $state = $moduleDetail[$([ModuleElement]::state.ToString())]
+    $state = $module[$([ModuleElement]::state.ToString())]
     if ($null -eq $state) {
         $state = [StateElement]::present
     }
 
     $dryRun = $Mode -eq [RunMode]::check
-    $tools = $moduleDetail[$([ModuleElement]::name.ToString())]
+    $tools = $module[$([ModuleElement]::name.ToString())]
     switch ($state) {
         $([StateElement]::present) {
             ScoopAppInstall -Tools $tools -Tag $Tag -DryRun $dryRun
