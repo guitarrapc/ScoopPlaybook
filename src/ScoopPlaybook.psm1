@@ -118,9 +118,6 @@ function RuntimeCheck {
     [OutputType([void])]
     param ()
 
-    $script:updatablePackages.Clear()
-    $script:failedPackages.Clear()
-
     # scoop status check
     $status = scoop status *>&1
     if (!$?) {
@@ -189,7 +186,7 @@ function RuntimeCheck {
     }
 }
 
-function VerifyYaml {
+function Validate {
     [CmdletBinding()]
     [OutputType([void])]
     param(
@@ -197,7 +194,11 @@ function VerifyYaml {
         [string]$BaseYaml
     )
 
-    Write-Verbose "Validate YAML format."
+    $header = "PRE [validate YAML]"
+    $marker = "*" * (CalulateSeparator -Message "$header ")
+    PrintHeader -Message "$header $marker"
+
+    PrintInfo -Message "[validate] Validate YAML format."
 
     # Verify Playbook exists
     if (!(Test-Path $BaseYaml)) {
@@ -206,12 +207,14 @@ function VerifyYaml {
     # Verify Playbook is not empty
     $definitions = Get-Content -LiteralPath $BaseYaml -Raw | ConvertFrom-Yaml
     if ($null -eq $definitions) {
-        throw [System.FormatException]::New("Playbook format invalid. $BaseYaml is empty.")
+        throw [System.FormatException]::New("Invalid Playbook format detected. $BaseYaml is empty.")
     }
     # Verify Playbook contains roles section
     if ($null -eq $definitions[$([PlaybookKeys]::roles.ToString())]) {
-        throw [System.FormatException]::New("Playbook format invalid. $BaseYaml is empty.")
+        throw [System.FormatException]::New("Invalid Playbook format detected. $BaseYaml missing role section.")
     }
+
+    PrintOk -Message "[validate] Playbook format is valid. ($BaseYaml)"
 
     $basePath = [System.IO.Path]::GetDirectoryName($BaseYaml)
 
@@ -221,20 +224,36 @@ function VerifyYaml {
         $taskPath = "$basePath/roles/$role/tasks/"
         $tasks = Get-ChildItem -LiteralPath "$taskPath" -File | Where-Object { $_.Extension -in @(".yml", ".yaml") }
         if ($null -eq $tasks) {
-            PrintWarning -Message "No task file found in $taskPath"
+            PrintWarning -Message "[validate] No task file found, role will skip. role: $role ($taskPath)"
             continue
         }
+        Write-Verbose "[validate] $(($tasks | Measure-Object).Count) tasks found. role: $role ($taskPath)"
 
         foreach ($task in $tasks.FullName) {
             $taskDef = Get-Content -LiteralPath "$task" -Raw | ConvertFrom-Yaml
             if ($null -eq $taskDef) {
-                PrintWarning -Message "No valid task definied in $task"
+                PrintWarning -Message "[validate] No valid task definied. task will skip. role: $role ($task)"
                 continue
             }
+            foreach ($modules in $taskDef) {
+                # Verify any modules are defined
+                $modules.Remove($([ModuleParams]::name.ToString()))
+                if ($modules.Keys.Count -eq 0) {
+                    throw [System.FormatException]::New("Invalid Playbook format detected. Module not found in definition. role: $role ($task)")
+                }
+
+                foreach ($key in $modules.Keys) {
+                    if ([Enum]::GetValues([Modules]) -notcontains $key) {
+                        throw [System.FormatException]::New("Invalid Playbook format detected. Module '$key' not found in definition. Allowed values are $([Enum]::GetValues([Modules]) -join ', ') role: $role ($task)")
+                    }
+                    # todo: module type check. (ConvertFrom-Yaml Deserializer is not good in PowerShell....)
+                }
+            }
+            PrintOk -Message "[validate] Task is valid. role: $role ($task)"
         }
     }
-
-    Write-Verbose "Validation passed. YAML format is valid."
+    PrintInfo -Message "[validate] Validation passed. YAML format is valid. (May fail on Role detail)"
+    NewLine
 }
 
 function RunMain {
@@ -274,14 +293,14 @@ function RunMain {
                 continue
             }
 
-            # Handle each module
-            foreach ($module in $taskDef) {
-                $name = $module[$([ModuleParams]::name.ToString())]
-                $module.Remove($([ModuleParams]::name.ToString()))
+            # Handle modules
+            foreach ($modules in $taskDef) {
+                $name = $modules[$([ModuleParams]::name.ToString())]
+                $modules.Remove($([ModuleParams]::name.ToString()))
 
                 # check which module
-                $containsAppInstall = $module.Contains([Modules]::scoop_install.ToString())
-                $containsBucketInstall = $module.Contains([Modules]::scoop_bucket_install.ToString())
+                $containsAppInstall = $modules.Contains([Modules]::scoop_install.ToString())
+                $containsBucketInstall = $modules.Contains([Modules]::scoop_bucket_install.ToString())
 
                 if ($containsAppInstall) {
                     # handle scoop_install
@@ -292,7 +311,7 @@ function RunMain {
                     $header = "TASK [$role : $name]"
                     $marker = "*" * (CalulateSeparator -Message "$header ")
                     PrintHeader -Message "$header $marker"
-                    ScoopAppStateHandler -Module $module -Tag $tag -Mode $Mode
+                    ScoopAppStateHandler -Modules $modules -Tag $tag -Mode $Mode
                 }
                 elseif ($containsBucketInstall) {
                     # handle scoop_bucket_install
@@ -303,18 +322,15 @@ function RunMain {
                     $header = "TASK [$role : $name]"
                     $marker = "*" * (CalulateSeparator -Message "$header ")
                     PrintHeader -Message "$header $marker"
-                    ScoopBucketStateHandler -Module $module -Tag $tag -Mode $Mode
+                    ScoopBucketStateHandler -Modules $modules -Tag $tag -Mode $Mode
                 }
                 else {
-                    $header = "skipped: TASK [$role : $name]"
+                    $header = "TASK [$role : $name]"
                     $marker = "*" * (CalulateSeparator -Message "$header ")
                     PrintHeader -Message "$header $marker"
-                    if ($module.Keys.Count -eq 0) {
-                        PrintOk -Message "skipping, no module specified"
+                    if ($modules.Keys.Count -eq 0) {
+                        PrintWarning -Message "module not specified."
                         continue
-                    }
-                    else {
-                        throw "error: Invalid key spacified in module `"$($module.Keys -join ',')`""
                     }
                 }
                 NewLine
@@ -329,33 +345,33 @@ function ScoopBucketStateHandler {
     [OutputType([void])]
     param(
         [Parameter(Mandatory = $true)]
-        [HashTable]$Module,
+        [HashTable]$Modules,
         [Parameter(Mandatory = $true)]
         [Modules]$Tag,
         [Parameter(Mandatory = $true)]
         [RunMode]$Mode
     )
 
-    $moduleDetail = $Module["$Tag"]
+    $module = $Modules["$Tag"]
 
     # blank definition
-    # hash table null should detect with string cast..... orz
-    if ([string]::IsNullOrWhiteSpace($moduleDetail)) {
+    # hack: hash table null should detect with string cast.....
+    if ([string]::IsNullOrWhiteSpace($module)) {
         Write-Verbose "no valid module defined"
         return
     }
 
     # set default bucket
-    if ($null -eq $moduleDetail.bucket) {
-        $moduleDetail.bucket = "main"
+    if ($null -eq $module.bucket) {
+        $module.bucket = "main"
     }
     # set default source
-    if (!$moduleDetail.ContainsKey("source")) {
-        $moduleDetail["source"] = ""
+    if (!$module.ContainsKey("source")) {
+        $module["source"] = ""
     }
 
     # pick up state and switch to install/uninstall
-    $state = $moduleDetail[$([ModuleElement]::state.ToString())]
+    $state = $module[$([ModuleElement]::state.ToString())]
     if ($null -eq $state) {
         $state = [StateElement]::present
     }
@@ -363,15 +379,15 @@ function ScoopBucketStateHandler {
     $dryRun = $Mode -eq [RunMode]::check
     switch ($state) {
         $([StateElement]::present) {
-            if ([string]::IsNullOrWhiteSpace($moduleDetail.source)) {
-                ScoopBucketInstall -Bucket $moduleDetail.bucket -Tag $Tag -DryRun $dryRun
+            if ([string]::IsNullOrWhiteSpace($module.source)) {
+                ScoopBucketInstall -Bucket $module.bucket -Tag $Tag -DryRun $dryRun
             }
             else {
-                ScoopBucketInstall -Bucket $moduleDetail.bucket -Source $moduleDetail.source -Tag $Tag -DryRun $dryRun
+                ScoopBucketInstall -Bucket $module.bucket -Source $module.source -Tag $Tag -DryRun $dryRun
             }
         }
         $([StateElement]::absent) {
-            ScoopBucketUninstall -Bucket $moduleDetail.bucket -Tag $Tag -DryRun $dryRun
+            ScoopBucketUninstall -Bucket $module.bucket -Tag $Tag -DryRun $dryRun
         }
     }
 }
@@ -381,38 +397,38 @@ function ScoopAppStateHandler {
     [OutputType([void])]
     param(
         [Parameter(Mandatory = $true)]
-        [HashTable]$Module,
+        [HashTable]$Modules,
         [Parameter(Mandatory = $true)]
         [Modules]$Tag,
         [Parameter(Mandatory = $true)]
         [RunMode]$Mode
     )
 
-    $moduleDetail = $Module["$Tag"]
+    $module = $Modules["$Tag"]
 
     # blank definition
-    # hash table null should detect with string cast..... orz
-    if ([string]::IsNullOrWhiteSpace($moduleDetail)) {
+    # hack: hash table null should detect with string cast.....
+    if ([string]::IsNullOrWhiteSpace($module)) {
         Write-Verbose "no valid module defined"
         return
     }
 
     # install bucket
-    if ($null -eq $moduleDetail.bucket) {
-        $moduleDetail.bucket = "main"
+    if ($null -eq $module.bucket) {
+        $module.bucket = "main"
     }
-    if (!(ScoopBucketExists -Bucket $moduleDetail.bucket)) {
-        throw "erro: [${Tag}]: $($moduleDetail.bucket) => no matching bucket found."
+    if (!(ScoopBucketExists -Bucket $module.bucket)) {
+        throw "erro: [${Tag}]: $($module.bucket) => no matching bucket found."
     }
 
     # pick up state and switch to install/uninstall
-    $state = $moduleDetail[$([ModuleElement]::state.ToString())]
+    $state = $module[$([ModuleElement]::state.ToString())]
     if ($null -eq $state) {
         $state = [StateElement]::present
     }
 
     $dryRun = $Mode -eq [RunMode]::check
-    $tools = $moduleDetail[$([ModuleElement]::name.ToString())]
+    $tools = $module[$([ModuleElement]::name.ToString())]
     switch ($state) {
         $([StateElement]::present) {
             ScoopAppInstall -Tools $tools -Tag $Tag -DryRun $dryRun
@@ -584,27 +600,22 @@ function ScoopAppUninstall {
             PrintChanged -Message "[${Tag}]: $tool => Require uninstall"
             Write-Verbose $installed.Line
             if ($DryRun) { continue }
-            scoop uninstall $tool | Out-String -Stream | ForEach-Object { Write-Host "  $_"}
+            scoop uninstall $tool | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
         }
     }
 }
 
-function Invoke-ScoopPlaybook {
+function Initialize {
     [CmdletBinding()]
     [OutputType([void])]
     param(
-        [Parameter(Mandatory = $false)]
-        [Alias("FullName", "Path", "PSPath")]
-        [string]$LiteralPath = "./site.yml",
         [RunMode]$Mode = [RunMode]::run
     )
 
     $before = $pwd
     try {
-        NewLine
-
         # setup
-        $header = "PRE [scoop : status]"
+        $header = "INIT [scoop]"
         $marker = "*" * (CalulateSeparator -Message "$header ")
         PrintHeader -Message "$header $marker"
         PrintInfo -Message "[init]: run with '$Mode' mode"
@@ -630,17 +641,34 @@ function Invoke-ScoopPlaybook {
             Set-Location -Path $before
         }
     }
+}
 
-    # run
+function Invoke-ScoopPlaybook {
+    [CmdletBinding()]
+    [OutputType([void])]
+    param(
+        [Parameter(Mandatory = $false)]
+        [Alias("FullName", "Path", "PSPath")]
+        [string]$LiteralPath = "./site.yml",
+        [RunMode]$Mode = [RunMode]::run
+    )
+
+    $baseYaml = "$LiteralPath"
+    $alterLiteralPath = [System.IO.Path]::ChangeExtension("$baseYaml", "yaml")
+    if (!(Test-Path "$baseYaml") -and (Test-Path "$alterLiteralPath")) {
+        Write-Verbose "$baseYaml not found but $alterLiteralPath found, switch to alter path."
+        $baseYaml = $alterLiteralPath
+    }
+
+    $script:updatablePackages.Clear()
+    $script:failedPackages.Clear()
+    $script:recapStatus.Clear()
+
     try {
-        $path = "$LiteralPath"
-        $alterLiteralPath = [System.IO.Path]::ChangeExtension("$path", "yaml")
-        if (!(Test-Path "$path") -and (Test-Path "$alterLiteralPath")) {
-            Write-Verbose "$path not found but $alterLiteralPath found, switch to alter path."
-            $path = $alterLiteralPath
-        }
-        VerifyYaml -BaseYaml "$path"
-        RunMain -BaseYaml "$path" -Mode $Mode
+        NewLine
+        Validate -BaseYaml "$baseYaml"
+        Initialize -Mode $Mode
+        RunMain -BaseYaml "$baseYaml" -Mode $Mode
     }
     catch [Exception] {
         PrintFail -Message "ScriptStackTrace Detail: $($_.GetType()) $($_.ScriptStackTrace)"
