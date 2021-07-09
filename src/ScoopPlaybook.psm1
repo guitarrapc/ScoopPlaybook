@@ -500,7 +500,7 @@ function ScoopAppInstall {
         # may be typo manifest should throw fast
         if ($output -match "Could not find manifest for") {
             PrintFail -Message "[${Tag}]: $tool => $($output)"
-            throw "ACTION: please make sure your desired manifest '$tool' is available."
+            continue
         }
         # successfully found manifest
         $isFailedPackage = $script:failedPackages -contains $tool
@@ -573,7 +573,7 @@ function ScoopAppUninstall {
         $installed = $output | Select-String -Pattern "Installed:"
         if ($null -eq $installed) {
             PrintFail -Message "[${Tag}]: $tool => $output"
-            return
+            continue
         }
 
         if ($installed.Line -match "no") {
