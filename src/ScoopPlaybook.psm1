@@ -577,17 +577,23 @@ function Invoke-ScoopPlaybook {
         NewLine
     }
     finally {
-        # scoop automatically change current directory to scoop path, revert to runtime executed path.
+        # scoop automatically change current directory to scoop path, reset to runtime executed path.
         if ($before -ne $pwd) {
-            Write-Verbose "Revert current directory to module executed path."
+            Write-Verbose "Reset current directory to module executed path."
             Set-Location -Path $before
         }
     }
 
     # run
     try {
-        VerifyYaml -BaseYaml $LiteralPath
-        RunMain -BaseYaml $LiteralPath -Mode $Mode
+        $path = [System.IO.Path]::GetFullPath("$LiteralPath")
+        $alterLiteralPath = [System.IO.Path]::ChangeExtension("$path", "yaml")
+        if (!(Test-Path "$path") -and (Test-Path "$alterLiteralPath")) {
+            Write-Verbose "$path not found but $alterLiteralPath found, switch to alter path."
+            $path = $alterLiteralPath
+        }
+        VerifyYaml -BaseYaml "$path"
+        RunMain -BaseYaml "$path" -Mode $Mode
     }
     catch [Exception] {
         PrintCheck -Message "ScriptStackTrace Detail: $($_.GetType()) $($_.ScriptStackTrace)"
