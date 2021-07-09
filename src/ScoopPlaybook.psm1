@@ -194,6 +194,10 @@ function Validate {
         [string]$BaseYaml
     )
 
+    $header = "PRE [validate YAML]"
+    $marker = "*" * (CalulateSeparator -Message "$header ")
+    PrintHeader -Message "$header $marker"
+
     PrintInfo -Message "[validate] Validate YAML format."
 
     # Verify Playbook exists
@@ -248,7 +252,7 @@ function Validate {
             PrintOk -Message "[validate] Task is valid. role: $role ($task)"
         }
     }
-    PrintInfo -Message "[validate] Validation passed. YAML format is valid."
+    PrintInfo -Message "[validate] Validation passed. YAML format is valid. (May fail on Role detail)"
     NewLine
 }
 
@@ -601,7 +605,7 @@ function ScoopAppUninstall {
     }
 }
 
-function Prepare {
+function Initialize {
     [CmdletBinding()]
     [OutputType([void])]
     param(
@@ -610,10 +614,8 @@ function Prepare {
 
     $before = $pwd
     try {
-        NewLine
-
         # setup
-        $header = "PRE [scoop : status]"
+        $header = "INIT [scoop]"
         $marker = "*" * (CalulateSeparator -Message "$header ")
         PrintHeader -Message "$header $marker"
         PrintInfo -Message "[init]: run with '$Mode' mode"
@@ -663,8 +665,9 @@ function Invoke-ScoopPlaybook {
     $script:recapStatus.Clear()
 
     try {
-        Prepare -Mode $Mode
+        NewLine
         Validate -BaseYaml "$baseYaml"
+        Initialize -Mode $Mode
         RunMain -BaseYaml "$baseYaml" -Mode $Mode
     }
     catch [Exception] {
