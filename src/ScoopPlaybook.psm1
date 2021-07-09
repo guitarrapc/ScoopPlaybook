@@ -449,13 +449,8 @@ function ScoopBucketInstall {
         [bool]$DryRun
     )
 
-    $prefix = "chng"
-    if ($DryRun) {
-        $prefix = "chck"
-    }
-
     if (!(ScoopBucketExists -Bucket $Bucket)) {
-        PrintChanged -Message "${prefix}: [${Tag}]: $Bucket => $Source (installed: $false)"
+        PrintChanged -Message "[${Tag}]: $Bucket => $Source (installed: $false)"
         if ($DryRun) { continue }
         PrintSpace
         scoop bucket add "$Bucket" "$Source"
@@ -477,13 +472,8 @@ function ScoopBucketUninstall {
         [bool]$DryRun
     )
 
-    $prefix = "chng"
-    if ($DryRun) {
-        $prefix = "chck"
-    }
-
     if (ScoopBucketExists -Bucket $Bucket) {
-        PrintChanged -Message "${prefix}: [${Tag}: $Bucket] (installed: $false)"
+        PrintChanged -Message "[${Tag}: $Bucket] (installed: $false)"
         if ($DryRun) { continue }
         PrintSpace
         scoop bucket rm $Bucket
@@ -505,11 +495,6 @@ function ScoopAppInstall {
         [bool]$DryRun
     )
 
-    $prefix = "chng"
-    if ($DryRun) {
-        $prefix = "chck"
-    }
-
     foreach ($tool in $Tools) {
         $output = scoop info $tool *>&1
         # may be typo manifest should throw fast
@@ -519,15 +504,13 @@ function ScoopAppInstall {
         }
         # successfully found manifest
         $isFailedPackage = $script:failedPackages -contains $tool
+        $notInstallStatus = ""
         if ($isFailedPackage) {
-            $notInstallStatus = "status: not installed, Failed previous installation, begin reinstall."
-            
-        } else {
-            $notInstallStatus = "status: not installed"
+            $notInstallStatus = "(Failed previous installation, begin reinstall.)"
         }
         $installed = $output | Select-String -Pattern "Installed:"
         if ($installed.Line -match "no") {
-            PrintChanged -Message "${prefix}: [${Tag}]: $tool => $($installed.Line) ($notInstallStatus)"
+            PrintChanged -Message "[${Tag}]: $tool => Require install $notInstallStatus"
             if ($DryRun) { continue }
             PrintSpace
             if ($isFailedPackage) {
@@ -542,7 +525,7 @@ function ScoopAppInstall {
             if ($null -ne $installedStrictCheck) {
                 # previous installation was interupped
                 $packageInfo = $outputStrict | Select-Object -Skip 2 -First 1
-                PrintChanged -Message "${prefix}: [${Tag}]: $tool => $($packageInfo) ($notInstallStatus)"
+                PrintChanged -Message "[${Tag}]: $tool => $($packageInfo) $notInstallStatus"
                 if ($DryRun) { continue }
                 PrintSpace
                 if ($isFailedPackage) {
@@ -558,7 +541,7 @@ function ScoopAppInstall {
                     PrintOk -Message "[${Tag}]: $tool => $($packageInfo) (status: latest)"
                 }
                 else {
-                    PrintChanged -Message "${prefix}: [${Tag}]: $tool => $($packageInfo) (status: updatable)"
+                    PrintChanged -Message "[${Tag}]: $tool => $($packageInfo) (status: updatable)"
                     if ($DryRun) { continue }
                     PrintSpace
                     scoop update $tool *>&1 | ForEach-Object { PrintInfo -Message $_ }
@@ -585,11 +568,6 @@ function ScoopAppUninstall {
         continue
     }
 
-    $prefix = "chng"
-    if ($DryRun) {
-        $prefix = "chck"
-    }
-
     foreach ($tool in $tools) {
         $output = scoop info $tool
         $installed = $output | Select-String -Pattern "Installed:"
@@ -598,7 +576,7 @@ function ScoopAppUninstall {
             Write-Verbose $installed.Line
         }
         else {
-            PrintChanged -Message "${prefix}: [${Tag}]: $tool => Require uninstall"
+            PrintChanged -Message "[${Tag}]: $tool => Require uninstall"
             Write-Verbose $installed.Line
             if ($DryRun) { continue }
             scoop uninstall $tool
