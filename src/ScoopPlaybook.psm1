@@ -17,6 +17,37 @@ enum LogLevel { changed; fail; header; info; ok; skip; warning; }
 $script:lineWidth = $Host.UI.RawUI.MaxWindowSize.Width
 $script:updatablePackages = [List[string]]::New()
 $script:failedPackages = [List[string]]::New()
+$script:recapStatus = [Dictionary[string, int]]::New()
+
+function InitPackages() {
+    $script:updatablePackages.Clear()
+    $script:failedPackages.Clear()
+}
+function InitRecap() {
+    $script:recapStatus.Clear()
+    $script:recapStatus.Add("ok", 0)
+    $script:recapStatus.Add("changed", 0)
+    $script:recapStatus.Add("failed", 0)
+}
+function RecapOk() {
+    $script:recapStatus["ok"]++
+}
+function RecapChanged() {
+    $script:recapStatus["changed"]++
+}
+function RecapFailed() {
+    $script:recapStatus["failed"]++
+}
+function PrintReCap {
+    $header = "PLAY RECAP "
+    $marker = "*" * (CalulateSeparator -Message "$header ")
+    PrintHeader -Message "$header $marker"
+    Write-Host "  ok=$($recapStatus["ok"])" -NoNewline -ForegroundColor Green
+    Write-Host "  changed=$($recapStatus["changed"])" -NoNewline -ForegroundColor Yellow
+    Write-Host "  failed=$($recapStatus["failed"])" -NoNewline -ForegroundColor Red
+    NewLine
+    NewLine
+}
 
 function CalulateSeparator {
     [OutputType([int])]
@@ -337,7 +368,8 @@ function RunMain {
             }
         }
     }
-    return
+
+    PrintReCap
 }
 
 function ScoopBucketStateHandler {
@@ -470,9 +502,11 @@ function ScoopBucketInstall {
         if ($DryRun) { continue }
         PrintSpace
         scoop bucket add "$Bucket" "$Source"
+        RecapChanged
     }
     else {
         PrintOk -Message "[${Tag}]: $Bucket"
+        RecapOk
     }
 }
 
@@ -493,9 +527,11 @@ function ScoopBucketUninstall {
         if ($DryRun) { continue }
         PrintSpace
         scoop bucket rm $Bucket
+        RecapChanged
     }
     else {
         PrintOk -Message "[${Tag}]: $Bucket"
+        RecapOk
     }
 }
 
@@ -516,6 +552,7 @@ function ScoopAppInstall {
         # may be typo manifest should throw fast
         if ($output -match "Could not find manifest for") {
             PrintFail -Message "[${Tag}]: $tool => $($output)"
+            RecapFailed
             continue
         }
         # successfully found manifest
@@ -534,6 +571,7 @@ function ScoopAppInstall {
                 PrintSpace
             }
             scoop install $tool
+            RecapChanged
         }
         else {
             $outputStrict = scoop list $tool *>&1
@@ -549,18 +587,21 @@ function ScoopAppInstall {
                     PrintSpace
                 }
                 scoop install $tool
+                RecapChanged
             }
             else {
                 $isUpdatable = $updatablePackages -contains $tool
                 $packageInfo = $outputStrict | Select-Object -Skip 2 -First 1
                 if (!$isUpdatable) {
                     PrintOk -Message "[${Tag}]: $tool => $($packageInfo) (status: latest)"
+                    RecapOk
                 }
                 else {
                     PrintChanged -Message "[${Tag}]: $tool => $($packageInfo) (status: updatable)"
                     if ($DryRun) { continue }
                     PrintSpace
                     scoop update $tool *>&1 | ForEach-Object { PrintInfo -Message $_ }
+                    RecapChanged
                 }
             }
         }
@@ -589,18 +630,21 @@ function ScoopAppUninstall {
         $installed = $output | Select-String -Pattern "Installed:"
         if ($null -eq $installed) {
             PrintFail -Message "[${Tag}]: $tool => $output"
+            RecapFailed
             continue
         }
 
         if ($installed.Line -match "no") {
             PrintOk -Message "[${Tag}]: $tool => Already uninstalled"
             Write-Verbose $installed.Line
+            RecapOk
         }
         else {
             PrintChanged -Message "[${Tag}]: $tool => Require uninstall"
             Write-Verbose $installed.Line
             if ($DryRun) { continue }
             scoop uninstall $tool | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
+            RecapChanged
         }
     }
 }
@@ -660,9 +704,8 @@ function Invoke-ScoopPlaybook {
         $baseYaml = $alterLiteralPath
     }
 
-    $script:updatablePackages.Clear()
-    $script:failedPackages.Clear()
-    $script:recapStatus.Clear()
+    InitPackages
+    InitRecap
 
     try {
         NewLine
