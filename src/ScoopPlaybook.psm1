@@ -600,7 +600,7 @@ function ScoopAppUninstall {
             PrintChanged -Message "[${Tag}]: $tool => Require uninstall"
             Write-Verbose $installed.Line
             if ($DryRun) { continue }
-            scoop uninstall $tool | Out-String -Stream | ForEach-Object { Write-Host "  $_"}
+            scoop uninstall $tool | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
         }
     }
 }
