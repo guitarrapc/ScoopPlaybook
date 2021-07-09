@@ -489,7 +489,6 @@ function ScoopAppInstall {
                 scoop install $tool
             }
             else {
-                $updatablePackages | ForEach-Object { Write-Verbose "$_" }
                 $isUpdatable = $updatablePackages -contains $tool
                 if (!$isUpdatable) {
                     PrintSkip -Message "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
