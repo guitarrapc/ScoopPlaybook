@@ -450,7 +450,7 @@ function ScoopBucketInstall {
     )
 
     if (!(ScoopBucketExists -Bucket $Bucket)) {
-        PrintChanged -Message "[${Tag}]: $Bucket => $Source (Require install)"
+        PrintChanged -Message "[${Tag}]: $Bucket => Require install ($Source)"
         if ($DryRun) { continue }
         PrintSpace
         scoop bucket add "$Bucket" "$Source"
@@ -473,7 +473,7 @@ function ScoopBucketUninstall {
     )
 
     if (ScoopBucketExists -Bucket $Bucket) {
-        PrintChanged -Message "[${Tag}]: $Bucket (Require uninstall)"
+        PrintChanged -Message "[${Tag}]: $Bucket => Require uninstall"
         if ($DryRun) { continue }
         PrintSpace
         scoop bucket rm $Bucket
@@ -584,7 +584,7 @@ function ScoopAppUninstall {
             PrintChanged -Message "[${Tag}]: $tool => Require uninstall"
             Write-Verbose $installed.Line
             if ($DryRun) { continue }
-            scoop uninstall $tool
+            scoop uninstall $tool | Out-String -Stream | ForEach-Object { Write-Host "  $_"}
         }
     }
 }
