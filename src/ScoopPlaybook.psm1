@@ -11,6 +11,7 @@ enum Modules { scoop_install; scoop_bucket_install; }
 enum RunMode { check; run; }
 enum ModuleElement { name; state; }
 enum StateElement { present; absent; }
+enum LogLevel { check; changed; fail; info; skip; warning; }
 
 #$script:lineWidth = $Host.UI.RawUI.MaxWindowSize.Width - $PWD.Path.Length
 $script:lineWidth = $Host.UI.RawUI.MaxWindowSize.Width
@@ -32,22 +33,44 @@ function PrintSpace() {
     Write-Host -NoNewline "  "
 }
 function PrintInfo([string]$Message) {
-    Write-Host "$Message"
+    Print -LogLevel $([LogLevel]::info) -Message "$Message"
 }
 function PrintWarning([string]$Message) {
-    Write-Warning "$Message"
+    Print -LogLevel $([LogLevel]::warning) -Message "$Message"
 }
 function PrintSkip([string]$Message) {
-    Write-Host -ForegroundColor Green "$Message"
+    Print -LogLevel $([LogLevel]::skip) -Message "$Message"
 }
 function PrintChanged([string]$Message) {
-    Write-Host -ForegroundColor DarkCyan "$Message"
+    Print -LogLevel $([LogLevel]::changed) -Message "$Message"
 }
 function PrintCheck([string]$Message) {
-    Write-Host -ForegroundColor Yellow "$Message"
+    Print -LogLevel $([LogLevel]::check) -Message "$Message"
 }
 function PrintFail([string]$Message) {
-    Write-Host -ForegroundColor Red "$Message"
+    Print -LogLevel $([LogLevel]::fail) -Message "$Message"
+}
+function Print([LogLevel]$LogLevel, [string]$Message) {
+    switch ($LogLevel) {
+        $([LogLevel]::changed) {
+            Write-Host -ForegroundColor DarkCyan "  [!] chng: $Message"
+        }
+        $([LogLevel]::check) {
+            Write-Host -ForegroundColor Yellow "  [!] chck: $Message"
+        }
+        $([LogLevel]::fail) {
+            Write-Host -ForegroundColor Red "$Message"
+        }
+        $([LogLevel]::info) {
+            Write-Host "$Message"
+        }
+        $([LogLevel]::skip) {
+            Write-Host -ForegroundColor White "  [o] skip: $Message"
+        }
+        $([LogLevel]::warning) {
+            Write-Warning "$Message"
+        }
+    }
 }
 
 function Prerequisites {
@@ -72,13 +95,13 @@ function UpdateScoop {
         $updates = scoop update *>&1
         foreach ($update in $updates) {
             if ($update -match "Scoop was updated successfully") {
-                PrintInfo -Message "  [o] skip: [scoop-update: $update]"
+                PrintSkip -Message "[scoop-update: $update]"
             }
             elseif ($update -match "Updating .*") {
-                PrintChanged -Message "  [o] chng: [scoop-update: $update]"
+                PrintChanged -Message "[scoop-update: $update]"
             }
             else {
-                PrintCheck -Message "  [o] chck: [scoop-update: $update]"
+                PrintCheck -Message "[scoop-update: $update]"
             }
         }
     }
@@ -101,12 +124,12 @@ function RuntimeCheck {
         if ($state -match "Updates are available") {
             $updateSection = $true
             $removeSection = $false
-            PrintCheck -Message "  [!] chck: [scoop-status: $state]"
+            PrintCheck -Message "[scoop-status: $state]"
         }
         elseif (($state -match "These app manifests have been removed") -or ($state -match "Missing runtime dependencies")) {
             $updateSection = $false
             $removeSection = $true
-            PrintCheck -Message "  [!] chck: [scoop-status: $state]"
+            PrintCheck -Message "[scoop-status: $state]"
         }
         elseif ($state -match "Scoop is up to date") {
             $updateSection = $false
@@ -122,11 +145,11 @@ function RuntimeCheck {
             if ($updateSection) {
                 $package = $state.ToString().Split(":")[0].Trim()
                 $script:updatablePackages.Add($package)
-                PrintChanged -Message "  [!] chck: [scoop-status: (updatable) $package]"
+                PrintCheck -Message "[scoop-status: (updatable) $package]"
             }
             elseif ($removeSection) {
                 $package = $state.ToString().Trim()
-                PrintChanged -Message "  [!] info: [scoop-status: (removable) $package]"
+                PrintCheck -Message "[scoop-status: (removable) $package]"
             }
             else {
                 PrintInfo -Message "  [o] info: [scoop-status: $state]"
@@ -137,7 +160,7 @@ function RuntimeCheck {
     # check potential problem
     $result = scoop checkup *>&1
     if ($result -notmatch "No problems") {
-        PrintCheck -Message "  [!] chck: [scoop-status: 'scoop checkup' shows potential problems, you should fix them to avoid trouble.]"
+        PrintCheck -Message "[scoop-status: 'scoop checkup' shows potential problems, you should fix them to avoid trouble.]"
         PrintWarning -Message $result
     }
 }
@@ -146,7 +169,8 @@ function VerifyYaml {
     [CmdletBinding()]
     [OutputType([void])]
     param(
-        [string]$BaseYaml = "site.yml"
+        [Parameter(Mandatory = $true)]
+        [string]$BaseYaml
     )
 
     Write-Verbose "Validate YAML format."
@@ -193,7 +217,8 @@ function RunMain {
     [CmdletBinding()]
     [OutputType([void])]
     param(
-        [string]$BaseYaml = "site.yml",
+        [Parameter(Mandatory = $true)]
+        [string]$BaseYaml,
         [RunMode]$Mode = [RunMode]::run
     )
 
@@ -406,13 +431,13 @@ function ScoopBucketInstall {
     }
 
     if (!(ScoopBucketExists -Bucket $Bucket)) {
-        PrintChanged -Message "  [!] ${prefix}: [${Tag}: $Bucket] => $Source (installed: $false)"
+        PrintChanged -Message "${prefix}: [${Tag}: $Bucket] => $Source (installed: $false)"
         if ($DryRun) { continue }
         PrintSpace
         scoop bucket add "$Bucket" "$Source"
     }
     else {
-        PrintSkip -Message "  [o] skip: [${Tag}: $Bucket]"
+        PrintSkip -Message "[${Tag}: $Bucket]"
     }
 }
 
@@ -434,13 +459,13 @@ function ScoopBucketUninstall {
     }
 
     if (ScoopBucketExists -Bucket $Bucket) {
-        PrintChanged -Message "  [!] ${prefix}: [${Tag}: $Bucket] (installed: $false)"
+        PrintChanged -Message "${prefix}: [${Tag}: $Bucket] (installed: $false)"
         if ($DryRun) { continue }
         PrintSpace
         scoop bucket rm $Bucket
     }
     else {
-        PrintSkip -Message "  [o] skip: [${Tag}: $Bucket]"
+        PrintSkip -Message "[${Tag}: $Bucket]"
     }
 }
 
@@ -471,7 +496,7 @@ function ScoopAppInstall {
         # successfully found manifest
         $installed = $output | Select-String -Pattern "Installed:"
         if ($installed.Line -match "no") {
-            PrintChanged -Message "  [!] ${prefix}: [${Tag}: $tool] => $($installed.Line)"
+            PrintChanged -Message "${prefix}: [${Tag}: $tool] => $($installed.Line)"
             if ($DryRun) { continue }
             PrintSpace
             scoop install $tool
@@ -481,7 +506,7 @@ function ScoopAppInstall {
             $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
             if ($null -ne $installedStrictCheck) {
                 # previous installation was interupped
-                PrintChanged -Message "  [!] ${prefix}: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
+                PrintChanged -Message "${prefix}: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
                 if ($DryRun) { continue }
                 PrintSpace
                 scoop uninstall $tool
@@ -491,10 +516,10 @@ function ScoopAppInstall {
             else {
                 $isUpdatable = $updatablePackages -contains $tool
                 if (!$isUpdatable) {
-                    PrintSkip -Message "  [o] skip: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
+                    PrintSkip -Message "[${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2)"
                 }
                 else {
-                    PrintChanged -Message "  [!] ${prefix}: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
+                    PrintChanged -Message "${prefix}: [${Tag}: $tool] => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
                     if ($DryRun) { continue }
                     PrintSpace
                     scoop update $tool *>&1 | ForEach-Object { PrintInfo -Message $_ }
@@ -530,11 +555,11 @@ function ScoopAppUninstall {
         $output = scoop info $tool
         $installed = $output | Select-String -Pattern "Installed:"
         if ($installed.Line -match "no") {
-            PrintSkip -Message "  [o] skip: [${Tag}: $tool] => Already uninstalled"
+            PrintSkip -Message "[${Tag}: $tool] => Already uninstalled"
             Write-Verbose $installed.Line
         }
         else {
-            PrintChanged -Message "  [!] ${prefix}: [${Tag}: $tool] => Require uninstall"
+            PrintChanged -Message "${prefix}: [${Tag}: $tool] => Require uninstall"
             Write-Verbose $installed.Line
             if ($DryRun) { continue }
             scoop uninstall $tool
@@ -567,11 +592,11 @@ function Invoke-ScoopPlaybook {
         Prerequisites
 
         # update
-        PrintCheck -Message "  [!] chck: [updating buckets]"
+        PrintCheck -Message "[updating buckets]"
         UpdateScoop -UpdateScoop $true
 
         # status check
-        PrintCheck -Message "  [!] chck: [checking scoop status]"
+        PrintCheck -Message "[checking scoop status]"
         RuntimeCheck
 
         NewLine
@@ -586,7 +611,7 @@ function Invoke-ScoopPlaybook {
 
     # run
     try {
-        $path = [System.IO.Path]::GetFullPath("$LiteralPath")
+        $path = "$LiteralPath"
         $alterLiteralPath = [System.IO.Path]::ChangeExtension("$path", "yaml")
         if (!(Test-Path "$path") -and (Test-Path "$alterLiteralPath")) {
             Write-Verbose "$path not found but $alterLiteralPath found, switch to alter path."
