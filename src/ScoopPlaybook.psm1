@@ -118,9 +118,6 @@ function RuntimeCheck {
     [OutputType([void])]
     param ()
 
-    $script:updatablePackages.Clear()
-    $script:failedPackages.Clear()
-
     # scoop status check
     $status = scoop status *>&1
     if (!$?) {
@@ -189,7 +186,7 @@ function RuntimeCheck {
     }
 }
 
-function VerifyYaml {
+function Validate {
     [CmdletBinding()]
     [OutputType([void])]
     param(
@@ -197,7 +194,7 @@ function VerifyYaml {
         [string]$BaseYaml
     )
 
-    Write-Verbose "Validate YAML format."
+    PrintInfo -Message "[validate] Validate YAML format."
 
     # Verify Playbook exists
     if (!(Test-Path $BaseYaml)) {
@@ -206,12 +203,14 @@ function VerifyYaml {
     # Verify Playbook is not empty
     $definitions = Get-Content -LiteralPath $BaseYaml -Raw | ConvertFrom-Yaml
     if ($null -eq $definitions) {
-        throw [System.FormatException]::New("Playbook format invalid. $BaseYaml is empty.")
+        throw [System.FormatException]::New("Invalid Playbook format detected. $BaseYaml is empty.")
     }
     # Verify Playbook contains roles section
     if ($null -eq $definitions[$([PlaybookKeys]::roles.ToString())]) {
-        throw [System.FormatException]::New("Playbook format invalid. $BaseYaml is empty.")
+        throw [System.FormatException]::New("Invalid Playbook format detected. $BaseYaml missing role section.")
     }
+
+    PrintOk -Message "[validate] Playbook format is valid. ($BaseYaml)"
 
     $basePath = [System.IO.Path]::GetDirectoryName($BaseYaml)
 
@@ -221,20 +220,36 @@ function VerifyYaml {
         $taskPath = "$basePath/roles/$role/tasks/"
         $tasks = Get-ChildItem -LiteralPath "$taskPath" -File | Where-Object { $_.Extension -in @(".yml", ".yaml") }
         if ($null -eq $tasks) {
-            PrintWarning -Message "No task file found in $taskPath"
+            PrintWarning -Message "No task file found. ($taskPath)"
             continue
         }
+        Write-Verbose "[validate] Task file found. ($taskPath)"
 
         foreach ($task in $tasks.FullName) {
             $taskDef = Get-Content -LiteralPath "$task" -Raw | ConvertFrom-Yaml
             if ($null -eq $taskDef) {
-                PrintWarning -Message "No valid task definied in $task"
+                PrintWarning -Message "No valid task definied. ($task)"
                 continue
             }
+            foreach ($module in $taskDef) {
+                # Verify module is specified
+                $module.Remove($([ModuleParams]::name.ToString()))
+                if ($module.Keys.Count -eq 0) {
+                    throw [System.FormatException]::New("Invalid Playbook format detected. Module not found in definition. ($task)")
+                }
+
+                foreach ($item in $module.Keys) {
+                    if ([Enum]::GetValues([Modules]) -notcontains $item) {
+                        throw [System.FormatException]::New("Invalid Playbook format detected. Module `"$($module.Keys -join ',')`" not found in definition. Allowed values are $([Enum]::GetValues([Modules]) -join ', ') ($task)")
+                    }
+                    # todo: module type check. (ConvertFrom-Yaml Deserializer is not good in PowerShell....)
+                }
+            }
+            PrintOk -Message "[validate] Task is valid. ($task)"
         }
     }
-
-    Write-Verbose "Validation passed. YAML format is valid."
+    PrintInfo -Message "[validate] Validation passed. YAML format is valid."
+    NewLine
 }
 
 function RunMain {
@@ -306,15 +321,12 @@ function RunMain {
                     ScoopBucketStateHandler -Module $module -Tag $tag -Mode $Mode
                 }
                 else {
-                    $header = "skipped: TASK [$role : $name]"
+                    $header = "TASK [$role : $name]"
                     $marker = "*" * (CalulateSeparator -Message "$header ")
                     PrintHeader -Message "$header $marker"
                     if ($module.Keys.Count -eq 0) {
-                        PrintOk -Message "skipping, no module specified"
+                        PrintWarning -Message "module not specified."
                         continue
-                    }
-                    else {
-                        throw "error: Invalid key spacified in module `"$($module.Keys -join ',')`""
                     }
                 }
                 NewLine
@@ -589,13 +601,10 @@ function ScoopAppUninstall {
     }
 }
 
-function Invoke-ScoopPlaybook {
+function Prepare {
     [CmdletBinding()]
     [OutputType([void])]
     param(
-        [Parameter(Mandatory = $false)]
-        [Alias("FullName", "Path", "PSPath")]
-        [string]$LiteralPath = "./site.yml",
         [RunMode]$Mode = [RunMode]::run
     )
 
@@ -630,17 +639,33 @@ function Invoke-ScoopPlaybook {
             Set-Location -Path $before
         }
     }
+}
 
-    # run
+function Invoke-ScoopPlaybook {
+    [CmdletBinding()]
+    [OutputType([void])]
+    param(
+        [Parameter(Mandatory = $false)]
+        [Alias("FullName", "Path", "PSPath")]
+        [string]$LiteralPath = "./site.yml",
+        [RunMode]$Mode = [RunMode]::run
+    )
+
+    $baseYaml = "$LiteralPath"
+    $alterLiteralPath = [System.IO.Path]::ChangeExtension("$baseYaml", "yaml")
+    if (!(Test-Path "$baseYaml") -and (Test-Path "$alterLiteralPath")) {
+        Write-Verbose "$baseYaml not found but $alterLiteralPath found, switch to alter path."
+        $baseYaml = $alterLiteralPath
+    }
+
+    $script:updatablePackages.Clear()
+    $script:failedPackages.Clear()
+    $script:recapStatus.Clear()
+
     try {
-        $path = "$LiteralPath"
-        $alterLiteralPath = [System.IO.Path]::ChangeExtension("$path", "yaml")
-        if (!(Test-Path "$path") -and (Test-Path "$alterLiteralPath")) {
-            Write-Verbose "$path not found but $alterLiteralPath found, switch to alter path."
-            $path = $alterLiteralPath
-        }
-        VerifyYaml -BaseYaml "$path"
-        RunMain -BaseYaml "$path" -Mode $Mode
+        Prepare -Mode $Mode
+        Validate -BaseYaml "$baseYaml"
+        RunMain -BaseYaml "$baseYaml" -Mode $Mode
     }
     catch [Exception] {
         PrintFail -Message "ScriptStackTrace Detail: $($_.GetType()) $($_.ScriptStackTrace)"
