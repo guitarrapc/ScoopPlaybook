@@ -16,6 +16,7 @@ enum LogLevel { changed; fail; header; info; ok; skip; warning; }
 #$script:lineWidth = $Host.UI.RawUI.MaxWindowSize.Width - $PWD.Path.Length
 $script:lineWidth = $Host.UI.RawUI.MaxWindowSize.Width
 $script:updatablePackages = [List[string]]::New()
+$script:failedPackages = [List[string]]::New()
 
 function CalulateSeparator {
     [OutputType([int])]
@@ -118,6 +119,7 @@ function RuntimeCheck {
     param ()
 
     $script:updatablePackages.Clear()
+    $script:failedPackages.Clear()
 
     # scoop status check
     $status = scoop status *>&1
@@ -126,25 +128,36 @@ function RuntimeCheck {
     }
     $updateSection = $false
     $removeSection = $false
+    $failSection = $false
     foreach ($state in $status) {
         if ($state -match "Updates are available") {
             $updateSection = $true
             $removeSection = $false
+            $failSection = $false
+            PrintInfo -Message "[scoop-status]: $state"
+        }
+        elseif ($state -match "These apps failed to install") {
+            $updateSection = $false
+            $removeSection = $false
+            $failSection = $true
             PrintInfo -Message "[scoop-status]: $state"
         }
         elseif (($state -match "These app manifests have been removed") -or ($state -match "Missing runtime dependencies")) {
             $updateSection = $false
             $removeSection = $true
+            $failSection = $false
             PrintInfo -Message "[scoop-status]: $state"
         }
         elseif ($state -match "Scoop is up to date") {
             $updateSection = $false
             $removeSection = $false
+            $failSection = $false
             PrintInfo -Message "[scoop-status]: $state"
         }
         elseif ($state -match "Everything is ok") {
             $updateSection = $false
             $removeSection = $false
+            $failSection = $false
             PrintInfo -Message "[scoop-status]: $state"
         }
         else {
@@ -156,6 +169,11 @@ function RuntimeCheck {
             elseif ($removeSection) {
                 $package = $state.ToString().Trim()
                 PrintOk -Message "[scoop-status]: (removable) $package"
+            }
+            elseif ($failSection) {
+                $package = $state.ToString().Trim()
+                $script:failedPackages.Add($package)
+                PrintOk -Message "[scoop-status]: (failed) $package"
             }
             else {
                 PrintInfo -Message "[scoop-status]: $state"
@@ -500,11 +518,22 @@ function ScoopAppInstall {
             throw "ACTION: please make sure your desired manifest '$tool' is available."
         }
         # successfully found manifest
+        $isFailedPackage = $script:failedPackages -contains $tool
+        if ($isFailedPackage) {
+            $notInstallStatus = "status: not installed, Failed previous installation, begin reinstall."
+            
+        } else {
+            $notInstallStatus = "status: not installed"
+        }
         $installed = $output | Select-String -Pattern "Installed:"
         if ($installed.Line -match "no") {
-            PrintChanged -Message "${prefix}: [${Tag}]: $tool => $($installed.Line)"
+            PrintChanged -Message "${prefix}: [${Tag}]: $tool => $($installed.Line) ($notInstallStatus)"
             if ($DryRun) { continue }
             PrintSpace
+            if ($isFailedPackage) {
+                scoop uninstall $tool
+                PrintSpace
+            }
             scoop install $tool
         }
         else {
@@ -512,20 +541,24 @@ function ScoopAppInstall {
             $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
             if ($null -ne $installedStrictCheck) {
                 # previous installation was interupped
-                PrintChanged -Message "${prefix}: [${Tag}]: $tool => $($outputStrict | Select-Object -Skip 1 -First 2) (installed: $false, Failed previous installation, begin reinstall.)"
+                $packageInfo = $outputStrict | Select-Object -Skip 2 -First 1
+                PrintChanged -Message "${prefix}: [${Tag}]: $tool => $($packageInfo) ($notInstallStatus)"
                 if ($DryRun) { continue }
                 PrintSpace
-                scoop uninstall $tool
-                PrintSpace
+                if ($isFailedPackage) {
+                    scoop uninstall $tool
+                    PrintSpace
+                }
                 scoop install $tool
             }
             else {
                 $isUpdatable = $updatablePackages -contains $tool
+                $packageInfo = $outputStrict | Select-Object -Skip 2 -First 1
                 if (!$isUpdatable) {
-                    PrintOk -Message "[${Tag}]: $tool => $($outputStrict | Select-Object -Skip 1 -First 2)"
+                    PrintOk -Message "[${Tag}]: $tool => $($packageInfo) (status: latest)"
                 }
                 else {
-                    PrintChanged -Message "${prefix}: [${Tag}]: $tool => $($outputStrict | Select-Object -Skip 1 -First 2) (updatable: $isUpdatable)"
+                    PrintChanged -Message "${prefix}: [${Tag}]: $tool => $($packageInfo) (status: updatable)"
                     if ($DryRun) { continue }
                     PrintSpace
                     scoop update $tool *>&1 | ForEach-Object { PrintInfo -Message $_ }
