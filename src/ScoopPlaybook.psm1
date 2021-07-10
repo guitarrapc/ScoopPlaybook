@@ -13,17 +13,16 @@ enum ModuleElement { name; state; }
 enum StateElement { present; absent; }
 enum LogLevel { changed; fail; header; info; ok; skip; warning; }
 
-#$script:lineWidth = $Host.UI.RawUI.MaxWindowSize.Width - $PWD.Path.Length
 $script:lineWidth = $Host.UI.RawUI.MaxWindowSize.Width
 $script:updatablePackages = [List[string]]::New()
 $script:failedPackages = [List[string]]::New()
 $script:recapStatus = [Dictionary[string, int]]::New()
 
 function InitPackages() {
+    $script:lineWidth = $Host.UI.RawUI.MaxWindowSize.Width
     $script:updatablePackages.Clear()
     $script:failedPackages.Clear()
-}
-function InitRecap() {
+    # recap
     $script:recapStatus.Clear()
     $script:recapStatus.Add("ok", 0)
     $script:recapStatus.Add("changed", 0)
@@ -691,7 +690,7 @@ function Invoke-ScoopPlaybook {
     }
 
     InitPackages
-    InitRecap
+    $baseYaml = DecideBaseYaml -LiteralPath "$LiteralPath"
 
     try {
         NewLine
