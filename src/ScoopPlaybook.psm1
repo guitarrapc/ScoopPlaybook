@@ -39,9 +39,7 @@ function RecapFailed() {
     $script:recapStatus["failed"]++
 }
 function PrintReCap {
-    $header = "PLAY RECAP "
-    $marker = "*" * (CalulateSeparator -Message "$header ")
-    PrintHeader -Message "$header $marker"
+    PrintHeader -Message "PLAY RECAP"
     Write-Host "  ok=$($recapStatus["ok"])" -NoNewline -ForegroundColor Green
     Write-Host "  changed=$($recapStatus["changed"])" -NoNewline -ForegroundColor Yellow
     Write-Host "  failed=$($recapStatus["failed"])" -NoNewline -ForegroundColor Red
@@ -94,7 +92,8 @@ function Print([LogLevel]$LogLevel, [string]$Message) {
             Write-Host -ForegroundColor Red "  fail: $Message"
         }
         $([LogLevel]::header) {
-            Write-Host "$Message"
+            $marker = "*" * (CalulateSeparator -Message "$Message ")
+            Write-Host "$Message $marker"
         }
         $([LogLevel]::info) {
             Write-Host "  info: $Message"
@@ -225,9 +224,7 @@ function Validate {
         [string]$BaseYaml
     )
 
-    $header = "PRE [validate YAML]"
-    $marker = "*" * (CalulateSeparator -Message "$header ")
-    PrintHeader -Message "$header $marker"
+    PrintHeader -Message "PRE [validate YAML]"
 
     PrintInfo -Message "[validate] Validate YAML format."
 
@@ -301,9 +298,7 @@ function RunMain {
 
     # Header
     $playbookName = $definitions[$([PlaybookKeys]::name.ToString())]
-    $header = "PLAY [$playbookName]"
-    $marker = "*" * (CalulateSeparator -Message "$header ")
-    PrintHeader -Message "$header $marker"
+    PrintHeader -Message "PLAY [$playbookName]"
     NewLine
 
     # Handle each role
@@ -339,9 +334,7 @@ function RunMain {
                     if ([string]::IsNullOrWhiteSpace($name)) {
                         $name = $tag.ToString()
                     }
-                    $header = "TASK [$role : $name]"
-                    $marker = "*" * (CalulateSeparator -Message "$header ")
-                    PrintHeader -Message "$header $marker"
+                    PrintHeader -Message "TASK [$role : $name]"
                     ScoopAppStateHandler -Modules $modules -Tag $tag -Mode $Mode
                 }
                 elseif ($containsBucketInstall) {
@@ -350,15 +343,11 @@ function RunMain {
                     if ([string]::IsNullOrWhiteSpace($name)) {
                         $name = $tag.ToString()
                     }
-                    $header = "TASK [$role : $name]"
-                    $marker = "*" * (CalulateSeparator -Message "$header ")
-                    PrintHeader -Message "$header $marker"
+                    PrintHeader -Message "TASK [$role : $name]"
                     ScoopBucketStateHandler -Modules $modules -Tag $tag -Mode $Mode
                 }
                 else {
-                    $header = "TASK [$role : $name]"
-                    $marker = "*" * (CalulateSeparator -Message "$header ")
-                    PrintHeader -Message "$header $marker"
+                    PrintHeader -Message "TASK [$role : $name]"
                     if ($modules.Keys.Count -eq 0) {
                         PrintWarning -Message "module not specified."
                         continue
@@ -658,10 +647,7 @@ function Initialize {
 
     $before = $pwd
     try {
-        # setup
-        $header = "INIT [scoop]"
-        $marker = "*" * (CalulateSeparator -Message "$header ")
-        PrintHeader -Message "$header $marker"
+        PrintHeader -Message "INIT [scoop]"
         PrintInfo -Message "[init]: run with '$Mode' mode"
 
         # prerequisites
