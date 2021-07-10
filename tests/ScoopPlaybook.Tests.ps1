@@ -11,14 +11,14 @@ InModuleScope "ScoopPlaybook" {
             It "scoop is installed" {
                 { scoop } | Should -Not -Throw
             }
-            It "prerequisites will not fail if scoop is installed." {
-                { Prerequisites } | Should -Not -Throw
+            It "ValidateScoopInstall will not fail if scoop is installed." {
+                { ValidateScoopInstall } | Should -Not -Throw
             }
             It "UpdateScoop will not fail if scoop is installed." {
                 { UpdateScoop } | Should -Not -Throw
             }
-            It "runtime check should be pass when latest scoop installed" {
-                { RuntimeCheck } | Should -Not -Throw
+            It "scoop status should be pass when latest scoop installed" {
+                { ScoopStatus } | Should -Not -Throw
             }
         }
     }
