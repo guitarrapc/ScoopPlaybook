@@ -109,7 +109,23 @@ function Print([LogLevel]$LogLevel, [string]$Message) {
     }
 }
 
-function Prerequisites {
+function DecideBaseYaml {
+    [OutputType([string])]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$LiteralPath
+    )
+
+    $baseYaml = "$LiteralPath"
+    $alterLiteralPath = [System.IO.Path]::ChangeExtension("$baseYaml", "yaml")
+    if (!(Test-Path "$baseYaml") -and (Test-Path "$alterLiteralPath")) {
+        Write-Verbose "$baseYaml not found but $alterLiteralPath found, switch to alter path."
+        $baseYaml = $alterLiteralPath
+    }
+    return $baseYaml
+}
+
+function ValidateScoopInstall {
     [OutputType([void])]
     param ()
 
@@ -143,7 +159,7 @@ function UpdateScoop {
     }
 }
 
-function RuntimeCheck {
+function ScoopStatus {
     [OutputType([void])]
     param ()
 
@@ -649,17 +665,17 @@ function Initialize {
         PrintHeader -Message "INIT [scoop]"
         PrintInfo -Message "[init]: run with '$Mode' mode"
 
-        # prerequisites
-        PrintInfo -Message "[init]: prerequisiting availability"
-        Prerequisites
+        # is scoop installed?
+        PrintInfo -Message "[init]: check scoop installed"
+        ValidateScoopInstall
 
-        # update
+        # update scoop
         PrintInfo -Message "[init]: updating buckets"
         UpdateScoop -UpdateScoop $true
 
         # status check
         PrintInfo -Message "[init]: checking scoop status"
-        RuntimeCheck
+        ScoopStatus
 
         NewLine
     }
@@ -681,13 +697,6 @@ function Invoke-ScoopPlaybook {
         [string]$LiteralPath = "./site.yml",
         [RunMode]$Mode = [RunMode]::run
     )
-
-    $baseYaml = "$LiteralPath"
-    $alterLiteralPath = [System.IO.Path]::ChangeExtension("$baseYaml", "yaml")
-    if (!(Test-Path "$baseYaml") -and (Test-Path "$alterLiteralPath")) {
-        Write-Verbose "$baseYaml not found but $alterLiteralPath found, switch to alter path."
-        $baseYaml = $alterLiteralPath
-    }
 
     InitPackages
     $baseYaml = DecideBaseYaml -LiteralPath "$LiteralPath"
