@@ -21,6 +21,7 @@ jobs:
         run: |
           Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
           scoop
+          scoop bucket list
           Install-Module PowerShell-Yaml -Scope CurrentUser -Force
           Install-Module -Name Pester -Scope CurrentUser -Force
           Invoke-Pester
