@@ -24,34 +24,31 @@ $script:scoopVersion = [ScoopVersionInfo]::unkown
 
 #region Scoop Command Wrapper
 function ScoopCmdCheckup {
-     scoop checkup *>&1
+    scoop checkup *>&1
 }
 function ScoopCmdInfo([string]$App) {
-    if ([string]::IsNullOrWhiteSpace($App))
-    {
+    if ([string]::IsNullOrWhiteSpace($App)) {
         throw [System.ArgumentNullException]::New($App)
     }
-     scoop info $App *>&1
+    scoop info $App *>&1
 }
 function ScoopCmdList([string]$App) {
-    if ([string]::IsNullOrWhiteSpace($App))
-    {
+    if ([string]::IsNullOrWhiteSpace($App)) {
         throw [System.ArgumentNullException]::New($App)
     }
-     scoop list $App *>&1
+    scoop list $App *>&1
 }
 function ScoopCmdUpdateAll {
-     scoop update *>&1
+    scoop update *>&1
 }
 function ScoopCmdUpdate([string]$App) {
-    if ([string]::IsNullOrWhiteSpace($App))
-    {
+    if ([string]::IsNullOrWhiteSpace($App)) {
         throw [System.ArgumentNullException]::New($App)
     }
-     scoop update $App *>&1
+    scoop update $App *>&1
 }
 function ScoopCmdStatus {
-     scoop status *>&1
+    scoop status *>&1
 }
 #endregion
 
@@ -60,7 +57,7 @@ function GetScoopVersion {
     [OutputType([ScoopVersionInfo])]
     param()
 
-    $typeName = (scoop info git | select -first 1).GetType().FullName
+    $typeName = (scoop info git | Select-Object -first 1).GetType().FullName
     if ($typeName -eq "System.Management.Automation.PSCustomObject") {
         return [ScoopVersionInfo]::version_0_1_0_or_higher
     }
