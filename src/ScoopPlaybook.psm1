@@ -28,14 +28,14 @@ function GetScoopVersion {
     param()
 
     $typeName = (scoop info git | select -first 1).GetType().FullName
-    if ($typeName -eq [PSCustomObject].FullName) {
+    if ($typeName -eq "System.Management.Automation.PSCustomObject") {
         return [ScoopVersionInfo]::version_0_1_0_or_higher
     }
     elseif ($typeName -eq [string].FullName) {
         return [ScoopVersionInfo]::version_0_0_1_and_lower
     }
     else {
-        $typeName
+        throw [System.ArgumentOutOfRangeException]::New("$typeName")
     }
 }
 
