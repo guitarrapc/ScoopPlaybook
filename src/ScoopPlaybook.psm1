@@ -5,22 +5,40 @@ using namespace System.Collections.Generic
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-enum PlaybookKeys { name; roles; }
-enum ModuleParams { name }
-enum Modules { scoop_install; scoop_bucket_install; }
-enum RunMode { check; run; }
-enum ModuleElement { name; state; }
-enum StateElement { present; absent; }
 enum LogLevel { changed; fail; header; info; ok; skip; warning; }
+enum Modules { scoop_install; scoop_bucket_install; }
+enum ModuleElement { name; state; }
+enum ModuleParams { name }
+enum PlaybookKeys { name; roles; }
+enum RunMode { check; run; }
+enum ScoopVersionInfo { unkown; version_0_0_1_and_lower; version_0_1_0_or_higher }
+enum StateElement { present; absent; }
 
 $script:lineWidth = $Host.UI.RawUI.MaxWindowSize.Width
 $script:updatablePackages = [List[string]]::New()
 $script:failedPackages = [List[string]]::New()
 $script:recapStatus = [Dictionary[string, int]]::New()
+$script:scoopVersion = [ScoopVersionInfo]::unkown
 
 #endregion
 
 #region helper
+function GetScoopVersion {
+    [OutputType([ScoopVersionInfo])]
+    param()
+
+    $typeName = (scoop info git | select -first 1).GetType().FullName
+    if ($typeName -eq [PSCustomObject].FullName) {
+        return [ScoopVersionInfo]::version_0_1_0_or_higher
+    }
+    elseif ($typeName -eq [string].FullName) {
+        return [ScoopVersionInfo]::version_0_0_1_and_lower
+    }
+    else {
+        $typeName
+    }
+}
+
 function InitPackages() {
     $script:lineWidth = $Host.UI.RawUI.MaxWindowSize.Width
     $script:updatablePackages.Clear()
@@ -277,6 +295,9 @@ function UpdateScoop {
 function ScoopStatus {
     [OutputType([void])]
     param ()
+
+    # determine current scoop version
+    $script:scoopVersion = GetScoopVersion
 
     # scoop status check
     $status = scoop status *>&1
