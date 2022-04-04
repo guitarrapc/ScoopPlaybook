@@ -22,6 +22,39 @@ $script:scoopVersion = [ScoopVersionInfo]::unkown
 
 #endregion
 
+#region Scoop Command Wrapper
+function ScoopCmdCheckup {
+     scoop checkup *>&1
+}
+function ScoopCmdInfo([string]$App) {
+    if ([string]::IsNullOrWhiteSpace($App))
+    {
+        throw [System.ArgumentNullException]::New($App)
+    }
+     scoop info $App *>&1
+}
+function ScoopCmdList([string]$App) {
+    if ([string]::IsNullOrWhiteSpace($App))
+    {
+        throw [System.ArgumentNullException]::New($App)
+    }
+     scoop list $App *>&1
+}
+function ScoopCmdUpdateAll {
+     scoop update *>&1
+}
+function ScoopCmdUpdate([string]$App) {
+    if ([string]::IsNullOrWhiteSpace($App))
+    {
+        throw [System.ArgumentNullException]::New($App)
+    }
+     scoop update $App *>&1
+}
+function ScoopCmdStatus {
+     scoop status *>&1
+}
+#endregion
+
 #region helper
 function GetScoopVersion {
     [OutputType([ScoopVersionInfo])]
@@ -277,7 +310,7 @@ function UpdateScoop {
 
     # update scoop to latest status
     if ($UpdateScoop) {
-        $updates = scoop update *>&1
+        $updates = ScoopCmdUpdateAll
         foreach ($update in $updates) {
             if ($update -match "Scoop was updated successfully") {
                 PrintInfo -Message "[scoop-update]: $update"
@@ -300,7 +333,7 @@ function ScoopStatus {
     $script:scoopVersion = GetScoopVersion
 
     # scoop status check
-    $status = scoop status *>&1
+    $status = ScoopCmdStatus
     if (!$?) {
         throw $status
     }
@@ -360,7 +393,7 @@ function ScoopStatus {
     }
 
     # check potential problem
-    $result = scoop checkup *>&1
+    $result = ScoopCmdCheckup
     if ($result -notmatch "No problems") {
         PrintInfo -Message "[scoop-checkup]: potential problems found, you may better fix them to avoid trouble."
         PrintWarning -Message $result
@@ -631,7 +664,7 @@ function ScoopAppInstall {
     )
 
     foreach ($tool in $Tools) {
-        $output = scoop info $tool *>&1
+        $output = ScoopCmdInfo -App $tool
         # may be typo manifest should throw fast
         if ($output -match "Could not find manifest for") {
             PrintFail -Message "[${Tag}]: $tool => $($output)"
@@ -657,7 +690,7 @@ function ScoopAppInstall {
             RecapChanged
         }
         else {
-            $outputStrict = scoop list $tool *>&1
+            $outputStrict = ScoopCmdList -App $tool
             $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
             if ($null -ne $installedStrictCheck) {
                 # previous installation was interupped
@@ -683,7 +716,7 @@ function ScoopAppInstall {
                     PrintChanged -Message "[${Tag}]: $tool => $($packageInfo) (status: updatable)"
                     if ($DryRun) { continue }
                     PrintSpace
-                    scoop update $tool *>&1 | ForEach-Object { PrintInfo -Message $_ }
+                    ScoopCmdUpdate -App $tool | ForEach-Object { PrintInfo -Message $_ }
                     RecapChanged
                 }
             }
@@ -709,7 +742,7 @@ function ScoopAppUninstall {
     }
 
     foreach ($tool in $tools) {
-        $output = scoop info $tool *>&1
+        $output = ScoopCmdInfo -App $tool
         $installed = $output | Select-String -Pattern "Installed:"
         if ($null -eq $installed) {
             PrintFail -Message "[${Tag}]: $tool => $output"
