@@ -213,7 +213,8 @@ function GetScoopVersion {
     [OutputType([ScoopVersionInfo])]
     param()
 
-    $typeName = (scoop info git | Select-Object -first 1).GetType().FullName
+    # HACK: "scoop info" output type has changed since
+    $typeName = (scoop info git | Get-Member).TypeName | Sort-Object -Unique
     if ($typeName -eq "System.Management.Automation.PSCustomObject") {
         return [ScoopVersionInfo]::version_0_1_0_or_higher
     }
