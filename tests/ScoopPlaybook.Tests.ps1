@@ -33,37 +33,37 @@ InModuleScope ScoopPlaybook {
         }
         Context "Scoop command output Type is valid" {
             It "scoop checkup output type is desired" {
-                (ScoopCmdCheckup | Select-Object -first 1).GetType().FullName | Should -Be "System.Management.Automation.InformationRecord"
+                (ScoopCmdCheckup | Select-Object | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
             }
             It "scoop info output type is desired" {
                 $version = GetScoopVersion
                 if ($version -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
-                    (ScoopCmdInfo -App git | Select-Object -first 1).GetType().FullName | Should -Be "System.Management.Automation.PSCustomObject"
+                    (ScoopCmdInfo -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.PSCustomObject"
                 }
                 elseif ($version -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
-                    (ScoopCmdInfo -App git | Select-Object -first 1).GetType().FullName | Should -Be "System.String"
+                    (ScoopCmdInfo -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.String"
                 }
                 else {
-                    (ScoopCmdInfo -App git | Select-Object -first 1).GetType().FullName | Should -Be "System.String"
+                    (ScoopCmdInfo -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.String"
                 }
             }
             It "scoop list output type is desired" {
                 $version = GetScoopVersion
                 if ($version -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
-                    (ScoopCmdList -App git | Select-Object -first 1).GetType().FullName | Should -Be "ScoopApps"
+                    (ScoopCmdList -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "ScoopApps"
                 }
                 elseif ($version -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
-                    (ScoopCmdList -App git | Select-Object -first 1).GetType().FullName | Should -Be "System.Management.Automation.InformationRecord"
+                    (ScoopCmdList -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
                 }
                 else {
-                    (ScoopCmdList -App git | Select-Object -first 1).GetType().FullName | Should -Be "System.Management.Automation.InformationRecord"
+                    (ScoopCmdList -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
                 }
             }
             It "scoop update app output type is desired" {
-                (ScoopCmdUpdate -App git | Select-Object -first 1).GetType().FullName | Should -Be "System.Management.Automation.InformationRecord"
+                (ScoopCmdUpdate -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
             }
             It "scoop status app output type is desired" {
-                ScoopCmdStatus -App git | ForEach-Object { $_.GetType().FullName } | Sort-Object -Unique | Should -BeIn @("System.Management.Automation.InformationRecord", "System.String")
+                (ScoopCmdStatus -App git | Get-Member).TypeName | Sort-Object -Unique | Sort-Object -Unique | Should -BeIn @("System.Management.Automation.InformationRecord", "System.String")
             }
         }
     }
