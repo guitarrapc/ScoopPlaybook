@@ -1,9 +1,13 @@
 name: build
 on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+
   push:
-    branches: ["master", "main"]
+    branches: ["main"]
   pull_request:
-    branches: ["master", "main"]
+    branches: ["main"]
 
 jobs:
   build:
@@ -15,7 +19,7 @@ jobs:
         shell: pwsh
         run: |
           Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
-          Install-Module PowerShell-Yaml -Scope CurrentUser -Force
+          Install-Module -Name PowerShell-Yaml -Scope CurrentUser -Force
           Install-Module -Name Pester -Scope CurrentUser -Force
       - name: Run PSScriptAnalyzer
         shell: pwsh
