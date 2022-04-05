@@ -31,4 +31,4 @@ jobs:
           .\install.ps1 -RunAsAdmin
           scoop
           scoop bucket list
-          Invoke-Pester -CI -Show Context
+          Invoke-Pester -CI
