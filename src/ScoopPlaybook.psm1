@@ -957,14 +957,14 @@ function ScoopAppInstall {
                         PrintChanged -Message "[${Tag}]: $app => Version: $($packageInfo.Version), Updated: $($packageInfo.Updated) (status: updatable)"
                         if ($DryRun) { continue }
                         PrintSpace
-                        $appErrorExists = $false
+                        $script:appErrorExists = $false
                         ScoopCmdUpdate -App $app | Out-String -Stream | ForEach-Object {
                             Write-Output "    $_";
                             if ($_ -match "ERROR Application .* is still running.*") {
-                                $appErrorExists = $true
+                                $script:appErrorExists = $true
                             }
                         }
-                        if ($appErrorExists) {
+                        if ($script:appErrorExists) {
                             throw "App installation failed."
                         }
                         $outputBuffer.Clear()
