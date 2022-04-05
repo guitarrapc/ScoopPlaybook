@@ -30,6 +30,7 @@ jobs:
           iwr -useb get.scoop.sh -outfile 'install.ps1'
           .\install.ps1 -RunAsAdmin
           scoop
-          scoop --version
           scoop bucket list
+          scoop list
+          scoop install git
           Invoke-Pester -CI

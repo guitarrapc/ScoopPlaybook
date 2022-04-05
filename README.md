@@ -177,10 +177,13 @@ roles:
 
 ## Test
 
+Please install "git" before running test.
+
 ```ps1
 # Pester 5.3.1
 Install-Module Pester -Force -Scope CurrentUser -SkipPublisherCheck
 Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
 Install-Module PowerShell-Yaml -Force -Scope CurrentUser
+scoop install git
 Invoke-Pester
 ```
