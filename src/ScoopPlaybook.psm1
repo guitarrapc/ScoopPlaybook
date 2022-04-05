@@ -968,7 +968,6 @@ function ScoopAppInstall {
                         if ($script:appErrorExists) {
                             throw "App installation failed."
                         }
-                        $outputBuffer.Clear()
                         RecapChanged
                     }
                 }
