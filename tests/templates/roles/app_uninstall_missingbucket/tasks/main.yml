@@ -1,6 +1,5 @@
-- name: "uninstall_app"
+- name: "app_uninstall_missingbucket"
   scoop_install:
     state: absent
-    bucket: main
     name:
       - time

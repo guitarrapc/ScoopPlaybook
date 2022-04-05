@@ -1,0 +1,3 @@
+name: app install failed for missingbucket
+roles:
+  - app_install_missingbucket

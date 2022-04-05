@@ -1,0 +1,3 @@
+name: app install sucess
+roles:
+  - app_install

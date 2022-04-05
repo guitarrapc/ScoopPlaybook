@@ -1,5 +1,5 @@
-- name: "install_app"
-  scoop_install:
+- name: "not_exists_role"
+  invalid_role:
     state: present
     bucket: main
     name:
