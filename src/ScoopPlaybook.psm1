@@ -771,10 +771,10 @@ function ScoopAppInstall {
                 if ($DryRun) { continue }
                 PrintSpace
                 if ($isFailedPackage) {
-                    scoop uninstall $app
+                    ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
                     PrintSpace
                 }
-                ScoopCmdInstall -App $app | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
+                ScoopCmdInstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
                 RecapChanged
             }
             else {
@@ -782,28 +782,30 @@ function ScoopAppInstall {
                 $previoudInstallFailed = $packageInfo.Info -Match "Install failed"
                 if ($previoudInstallFailed) {
                     # previous installation was interupped
-                    PrintChanged -Message "[${Tag}]: $app => $($packageInfo.Updated) $($packageInfo.Info)"
+                    PrintChanged -Message "[${Tag}]: $app => Updated: $($packageInfo.Updated) $($packageInfo.Info)"
                     if ($DryRun) { continue }
                     PrintSpace
-                    # re-install
+                    # re-install package.
                     if ($isFailedPackage) {
-                        ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
+                        ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
                         PrintSpace
                     }
-                    ScoopCmdInstall -App $app | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
+                    ScoopCmdInstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
                     RecapChanged
                 }
                 else {
                     $isUpdatable = $updatablePackages -contains $app
                     if (!$isUpdatable) {
-                        PrintOk -Message "[${Tag}]: $app => $($packageInfo.Version) $($packageInfo.Updated) (status: latest)"
+                        # already latest.
+                        PrintOk -Message "[${Tag}]: $app => Version: $($packageInfo.Version), Updated: $($packageInfo.Updated) (status: latest)"
                         RecapOk
                     }
                     else {
-                        PrintChanged -Message "[${Tag}]: $app => $($packageInfo.Version) $($packageInfo.Updated) (status: updatable)"
+                        # install new package.
+                        PrintChanged -Message "[${Tag}]: $app => Version: $($packageInfo.Version), Updated: $($packageInfo.Updated) (status: updatable)"
                         if ($DryRun) { continue }
                         PrintSpace
-                        ScoopCmdUpdate -App $app | ForEach-Object { PrintInfo -Message $_ }
+                        ScoopCmdUpdate -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
                         RecapChanged
                     }
                 }
@@ -844,15 +846,17 @@ function ScoopAppUninstall {
             $isInstalled = ($output | Get-Member -MemberType NoteProperty).Name -contains "Installed"
 
             if (!$isInstalled) {
+                # already uninstalled.
                 PrintOk -Message "[${Tag}]: $app => Already uninstalled"
-                Write-Verbose "$($output.Name) $($output.Version) (Bucket: $($output.Bucket))"
+                Write-Verbose "$($output.Name) Version: $($output.Version), Bucket: $($output.Bucket)"
                 RecapOk
             }
             else {
+                # uninstall package.
                 PrintChanged -Message "[${Tag}]: $app => Require uninstall"
-                Write-Verbose "$($output.Name) $($output.Version) (Bucket: $($output.Bucket))"
+                Write-Verbose "$($output.Name) Version: $($output.Version), Bucket: $($output.Bucket)"
                 if ($DryRun) { continue }
-                ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
+                ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
                 RecapChanged
             }
         }
