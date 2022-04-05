@@ -731,7 +731,7 @@ function ScoopAppStateHandler {
         }
         $([StateElement]::absent) {
             if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher ) {
-                ScoopAppUninstall Apps $apps -Tag $Tag -DryRun $dryRun
+                ScoopAppUninstall -Apps $apps -Tag $Tag -DryRun $dryRun
             }
             else {
                 ScoopAppUninstallObsolete -Tools $apps -Tag $Tag -DryRun $dryRun
@@ -836,26 +836,31 @@ function ScoopAppUninstall {
     }
 
     foreach ($app in $Apps) {
-        # this is catch target.
-        $output = ScoopCmdInfo -App $app
-        $installed = $output | Select-String -Pattern "Installed:"
-        if ($null -eq $installed) {
-            PrintFail -Message "[${Tag}]: $app => $output"
+        try {
+            # this is catch target.
+            $output = ScoopCmdInfo -App $app
+
+            # HACK: installed app has "Installed" property, not-installed app not have property.
+            $isInstalled = ($output | Get-Member -MemberType NoteProperty).Name -contains "Installed"
+
+            if (!$isInstalled) {
+                PrintOk -Message "[${Tag}]: $app => Already uninstalled"
+                Write-Verbose "$($output.Name) $($output.Version) (Bucket: $($output.Bucket))"
+                RecapOk
+            }
+            else {
+                PrintChanged -Message "[${Tag}]: $app => Require uninstall"
+                Write-Verbose "$($output.Name) $($output.Version) (Bucket: $($output.Bucket))"
+                if ($DryRun) { continue }
+                ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
+                RecapChanged
+            }
+        }
+        catch {
+            # failed to find manifest. message should be "ERROR '$app' isn't installed.". May be typo for app name.
+            PrintFail -Message "[${Tag}]: $app => $($_.Exception.Message)"
             RecapFailed
             continue
-        }
-
-        if ($installed.Line -match "no") {
-            PrintOk -Message "[${Tag}]: $app => Already uninstalled"
-            Write-Verbose $installed.Line
-            RecapOk
-        }
-        else {
-            PrintChanged -Message "[${Tag}]: $app => Require uninstall"
-            Write-Verbose $installed.Line
-            if ($DryRun) { continue }
-            ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
-            RecapChanged
         }
     }
 }
