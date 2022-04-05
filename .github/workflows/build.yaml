@@ -23,13 +23,12 @@ jobs:
           Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1 -Severity Warning
           Invoke-ScriptAnalyzer -Path ./src/ScoopPlaybook.psm1 -Settings CodeFormatting
       # Actions shell is Administartor. see https://github.com/ScoopInstaller/Install#for-admin
-      - name: Install Scoop
+      # Need install scoop in same run of Invoke-Pester.
+      - name: Run Unit Test
         shell: pwsh
         run: |
           iwr -useb get.scoop.sh -outfile 'install.ps1'
           .\install.ps1 -RunAsAdmin
           scoop
           scoop bucket list
-      - name: Run Unit Test
-        shell: pwsh
-        run: Invoke-Pester
+          Invoke-Pester -CI -Show Context
