@@ -1,4 +1,4 @@
-- name: "absent"
+- name: "uninstall_app"
   scoop_install:
     state: absent
     bucket: main

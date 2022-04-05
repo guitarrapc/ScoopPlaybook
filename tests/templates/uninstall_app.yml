@@ -1,0 +1,3 @@
+name: uninstall_app
+roles:
+  - uninstall_app

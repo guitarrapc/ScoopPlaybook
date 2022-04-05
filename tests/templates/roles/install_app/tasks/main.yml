@@ -1,4 +1,4 @@
-- name: "success"
+- name: "install_app"
   scoop_install:
     state: present
     bucket: main

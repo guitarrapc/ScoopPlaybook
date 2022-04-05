@@ -76,21 +76,7 @@ InModuleScope ScoopPlaybook {
     foreach ($mode in "run", "check") {
         $env:Mode = $mode
         $env:templatePath = "tests/templates"
-        Describe "PlaybookTest success pattern" {
-            Context "When site.yaml and task is valid" {
-                BeforeEach {
-                    Mock Write-Host { } -Verifiable
-                }
-                It "installing package role should not throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "$env:templatePath/success.yml" -Mode $env:MODE } | Should -Not -Throw
-                }
-                It "uninstalling package role should not throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "$env:templatePath/uninstall.yml" -Mode $env:MODE } | Should -Not -Throw
-                }
-            }
-        }
-
-        Describe "Playbook Verify fail pattern" {
+        Describe "Playbook Verify Fail Test" {
             Context "When site.yaml is not exists" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
@@ -141,7 +127,18 @@ InModuleScope ScoopPlaybook {
             }
         }
 
-        Describe "PlaybookTest fail pattern" {
+        Describe "App Installation Test" {
+            Context "When package is exists" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "installing package should not throw (mode: $env:Mode)" {
+                    { RunMain -BaseYaml "$env:templatePath/install_app.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+                It "uninstalling package should not throw (mode: $env:Mode)" {
+                    { RunMain -BaseYaml "$env:templatePath/uninstall_app.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+            }
             Context "When package is not exists in task" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
