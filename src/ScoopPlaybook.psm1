@@ -712,8 +712,8 @@ function ScoopBucketExists {
         [string]$Bucket
     )
 
-    $bucket = ScoopCmdBucketList | Where-Object Name -eq "$Bucket"
-    return $null -ne $bucket
+    $result = ScoopCmdBucketList | Where-Object Name -eq "$Bucket"
+    return $null -ne $result
 }
 function ScoopBucketInstall {
     [CmdletBinding()]
@@ -729,7 +729,8 @@ function ScoopBucketInstall {
         [bool]$DryRun
     )
 
-    if (!(ScoopBucketExists -Bucket $Bucket)) {
+    $exists = ScoopBucketExists -Bucket $Bucket
+    if (!$exists) {
         PrintChanged -Message "[${Tag}]: $Bucket => Require install ($Source)"
         if ($DryRun) { continue }
         PrintSpace
@@ -752,8 +753,8 @@ function ScoopBucketUninstall {
         [Parameter(Mandatory = $true)]
         [bool]$DryRun
     )
-
-    if (ScoopBucketExists -Bucket $Bucket) {
+    $exists = ScoopBucketExists -Bucket $Bucket
+    if ($exists) {
         PrintChanged -Message "[${Tag}]: $Bucket => Require uninstall"
         if ($DryRun) { continue }
         PrintSpace
@@ -790,7 +791,8 @@ function ScoopBucketInstallOboslete {
         [bool]$DryRun
     )
 
-    if (!(ScoopBucketExistsObsolete -Bucket $Bucket)) {
+    $exists = ScoopBucketExistsObsolete -Bucket $Bucket
+    if (!$exists) {
         PrintChanged -Message "[${Tag}]: $Bucket => Require install ($Source)"
         if ($DryRun) { continue }
         PrintSpace
@@ -815,7 +817,8 @@ function ScoopBucketUninstallObsolete {
         [bool]$DryRun
     )
 
-    if (ScoopBucketExistsObsolete -Bucket $Bucket) {
+    $exists = ScoopBucketExistsObsolete -Bucket $Bucket
+    if ($exists) {
         PrintChanged -Message "[${Tag}]: $Bucket => Require uninstall"
         if ($DryRun) { continue }
         PrintSpace
