@@ -1,0 +1,5 @@
+- name: "app_install_missingbucket"
+  scoop_install:
+    state: present
+    name:
+      - time

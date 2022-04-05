@@ -11,18 +11,26 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v2
-      - name: run script analyzer
+      - name: Install Modules
+        shell: pwsh
         run: |
           Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
-          Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1 -Severity Warning
-          Invoke-ScriptAnalyzer -Path ./src/ScoopPlaybook.psm1 -Settings CodeFormatting
-        shell: pwsh
-      - name: run unit test
-        run: |
-          Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
-          scoop
-          scoop bucket list
           Install-Module PowerShell-Yaml -Scope CurrentUser -Force
           Install-Module -Name Pester -Scope CurrentUser -Force
-          Invoke-Pester
+      - name: Run PSScriptAnalyzer
         shell: pwsh
+        run: |
+          Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1 -Severity Warning
+          Invoke-ScriptAnalyzer -Path ./src/ScoopPlaybook.psm1 -Settings CodeFormatting
+      # Actions shell is Administartor. see https://github.com/ScoopInstaller/Install#for-admin
+      # Need install scoop in same run of Invoke-Pester.
+      - name: Run Unit Test
+        shell: pwsh
+        run: |
+          iwr -useb get.scoop.sh -outfile 'install.ps1'
+          .\install.ps1 -RunAsAdmin
+          scoop
+          scoop bucket list
+          scoop list
+          scoop install git
+          Invoke-Pester -CI

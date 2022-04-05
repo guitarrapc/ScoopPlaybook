@@ -1,0 +1,3 @@
+name: bucket install no source
+roles:
+  - bucket_install_extras

@@ -1,0 +1,3 @@
+name: app uninstall (not exists package)
+roles:
+  - app_uninstall_not_exists_package

@@ -1,0 +1,5 @@
+- name: "app_uninstall_missingbucket"
+  scoop_install:
+    state: absent
+    name:
+      - time

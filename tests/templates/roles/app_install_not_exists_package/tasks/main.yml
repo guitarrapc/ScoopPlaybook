@@ -1,0 +1,5 @@
+- name: "app_install_not_exists_package"
+  scoop_install:
+    state: present
+    name:
+      - xxxxxxxxxxxxxxx

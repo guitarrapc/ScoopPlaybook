@@ -1,0 +1,5 @@
+- name: "bucket_install"
+  scoop_bucket_install:
+    state: present
+    bucket: guitarrapc
+    source: https://github.com/guitarrapc/scoop-bucket.git

@@ -2,7 +2,7 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . "$here\$sut"
 
-InModuleScope "ScoopPlaybook" {
+InModuleScope ScoopPlaybook {
     Describe "Pre execute Test" {
         Context "When there are scoop installed" {
             BeforeEach {
@@ -22,29 +22,66 @@ InModuleScope "ScoopPlaybook" {
             }
         }
     }
-    foreach ($mode in "run", "check") {
-        $env:Mode = $mode
-        $env:templatePath = "tests/templates"
-        Describe "PlaybookTest success pattern" {
-            Context "When site.yaml and task is valid" {
-                BeforeEach {
-                    Mock Write-Host { } -Verifiable
-                }
-                It "installing package role should not throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "$env:templatePath/success.yml" -Mode $env:MODE } | Should -Not -Throw
-                }
-                It "uninstalling package role should not throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "$env:templatePath/uninstall.yml" -Mode $env:MODE } | Should -Not -Throw
-                }
+    Describe "Scoop version Test" {
+        Context "When Scoop Version command is valid" {
+            It "scoop info running without error" {
+                { scoop info git } | Should -Not -Throw
+            }
+            It "GetScoopVersion run successfully" {
+                { GetScoopVersion } | Should -Not -Throw
             }
         }
-        
-        Describe "Playbook Verify fail pattern" {
+        Context "Scoop command output Type is valid" {
+            It "scoop checkup output type is desired" {
+                (ScoopCmdCheckup | Select-Object | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
+            }
+            It "scoop info output type is desired" {
+                $version = GetScoopVersion
+                if ($version -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
+                    (ScoopCmdInfo -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.PSCustomObject"
+                }
+                elseif ($version -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
+                    (ScoopCmdInfo -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.String"
+                }
+                else {
+                    (ScoopCmdInfo -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.String"
+                }
+            }
+            It "scoop install output type is desired" {
+                (ScoopCmdInstall -App bat | Select-Object | Get-Member).TypeName | Sort-Object -Unique | Should -BeIn @("System.Management.Automation.InformationRecord", "System.String")
+            }
+            It "scoop list output type is desired" {
+                $version = GetScoopVersion
+                if ($version -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
+                    (ScoopCmdList -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "ScoopApps"
+                }
+                elseif ($version -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
+                    (ScoopCmdList -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
+                }
+                else {
+                    (ScoopCmdList -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
+                }
+            }
+            It "scoop uninstall output type is desired" {
+                (ScoopCmdUninstall -App bat | Select-Object | Get-Member).TypeName | Sort-Object -Unique | Should -BeIn @("System.Management.Automation.InformationRecord", "System.String")
+            }
+            It "scoop update app output type is desired" {
+                (ScoopCmdUpdate -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
+            }
+            It "scoop status app output type is desired" {
+                (ScoopCmdStatus | Get-Member).TypeName | Sort-Object -Unique | Sort-Object -Unique | Should -BeIn @("System.Management.Automation.InformationRecord", "System.String")
+            }
+        }
+    }
+    foreach ($mode in "check", "run") {
+        $env:Mode = $mode
+        $env:templatePath = "tests/templates"
+        Describe "Playbook Verify Test (mode: $env:Mode)" {
             Context "When site.yaml is not exists" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "not existing playbook should throw (mode: $env:Mode)" {
+                It "not existing playbook should throw" {
                     { VerifyYaml -BaseYaml "noneexitpath.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
@@ -52,7 +89,7 @@ InModuleScope "ScoopPlaybook" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "verify no task dir should throw (mode: $env:Mode)" {
+                It "verify no task dir should throw" {
                     { VerifyYaml -BaseYaml "$env:templatePath/notaskdir.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
@@ -60,7 +97,7 @@ InModuleScope "ScoopPlaybook" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "verify empty playbook should throw (mode: $env:Mode)" {
+                It "verify empty playbook should throw" {
                     { VerifyYaml -BaseYaml "$env:templatePath/empty.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
@@ -68,7 +105,7 @@ InModuleScope "ScoopPlaybook" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "verify missing role playbook should throw (mode: $env:Mode)" {
+                It "verify missing role playbook should throw" {
                     { VerifyYaml -BaseYaml "$env:templatePath/missingrole.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
@@ -76,7 +113,7 @@ InModuleScope "ScoopPlaybook" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "verify invalid role playbook should throw (mode: $env:Mode)" {
+                It "verify invalid role playbook should throw" {
                     { VerifyYaml -BaseYaml "$env:templatePath/invalidrole.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
@@ -84,30 +121,96 @@ InModuleScope "ScoopPlaybook" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "verify no task should not throw (mode: $env:Mode)" {
+                It "verify no task should not throw" {
                     { VerifyYaml -BaseYaml "$env:templatePath/notaskfile.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
+            Context "When not exists role" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "verify not exists role playbook should throw" {
+                    { VerifyYaml -BaseYaml "$env:templatePath/notexistsrole.yml" -Mode $env:MODE } | Should -Throw
+                }
+            }
         }
+    }
 
-        Describe "PlaybookTest fail pattern" {
+    foreach ($mode in "check", "run") {
+        $env:Mode = $mode
+        $env:templatePath = "tests/templates"
+        Describe "Scoop Bucket Test (mode: $env:Mode)" {
+            Context "When bucket Install" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "installing bucket should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/bucket_install.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+                It "installing bucket extras should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/bucket_install_extras.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+            }
+            Context "When bucket Uninstall" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "uninstalling bucket should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/bucket_uninstall.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+                It "uninstalling bucket extras should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/bucket_uninstall_extras.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+                It "uninstall non existing bucket should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/bucket_uninstall_not_exists_bucket.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+            }
+            Context "When bucket Install invalid" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "install non existing source bucket should throw" {
+                    { RunMain -BaseYaml "$env:templatePath/bucket_install_not_exists_source.yml" -Mode $env:MODE } | Should -Throw
+                }
+            }
+        }
+    }
+
+    foreach ($mode in "check", "run") {
+        $env:Mode = $mode
+        $env:templatePath = "tests/templates"
+        Describe "Scoop App Test (mode: $env:Mode)" {
+            Context "When package is exists" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "installing package should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/app_install.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+                It "uninstalling package should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/app_uninstall.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+            }
             Context "When package is not exists in task" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "verify non existing package should throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "$env:templatePath/nonexistingpackage.yml" -Mode $env:MODE } | Should -Throw
+                It "install non existing package should throw" {
+                    { RunMain -BaseYaml "$env:templatePath/app_install_not_exists_package.yml" -Mode $env:MODE } | Should -Throw
+                }
+                It "uninstall non existing package should throw" {
+                    { RunMain -BaseYaml "$env:templatePath/app_uninstall_not_exists_package.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
             Context "When task missing bucket prop" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "installing package should throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "$env:templatePath/missingbucket.yml" -Mode $env:MODE } | Should -Throw
+                It "installing package should throw" {
+                    { RunMain -BaseYaml "$env:templatePath/app_install_missingbucket.yml" -Mode $env:MODE } | Should -Throw
                 }
-                It "uninstalling package  should throw (mode: $env:Mode)" {
-                    { RunMain -BaseYaml "$env:templatePath/missingbucketuninstall.yml" -Mode $env:MODE } | Should -Throw
+                It "uninstalling package  should throw" {
+                    { RunMain -BaseYaml "$env:templatePath/app_uninstall_missingbucket.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
         }

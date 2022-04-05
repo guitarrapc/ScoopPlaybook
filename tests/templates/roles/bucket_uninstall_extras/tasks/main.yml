@@ -1,0 +1,4 @@
+- name: "bucket_uninstall_extras"
+  scoop_bucket_install:
+    state: absent
+    bucket: extras

@@ -1,6 +1,0 @@
-- name: "absent"
-  scoop_install:
-    state: absent
-    bucket: main
-    name:
-      - time

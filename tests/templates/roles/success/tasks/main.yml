@@ -1,6 +1,0 @@
-- name: "success"
-  scoop_install:
-    state: present
-    bucket: main
-    name:
-      - time
