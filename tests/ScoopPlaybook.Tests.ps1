@@ -73,15 +73,15 @@ InModuleScope ScoopPlaybook {
             }
         }
     }
-    foreach ($mode in "run", "check") {
+    foreach ($mode in "check", "run") {
         $env:Mode = $mode
         $env:templatePath = "tests/templates"
-        Describe "Playbook Verify Fail Test" {
+        Describe "Playbook Verify Test (mode: $env:Mode)" {
             Context "When site.yaml is not exists" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "not existing playbook should throw (mode: $env:Mode)" {
+                It "not existing playbook should throw" {
                     { VerifyYaml -BaseYaml "noneexitpath.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
@@ -89,7 +89,7 @@ InModuleScope ScoopPlaybook {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "verify no task dir should throw (mode: $env:Mode)" {
+                It "verify no task dir should throw" {
                     { VerifyYaml -BaseYaml "$env:templatePath/notaskdir.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
@@ -97,7 +97,7 @@ InModuleScope ScoopPlaybook {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "verify empty playbook should throw (mode: $env:Mode)" {
+                It "verify empty playbook should throw" {
                     { VerifyYaml -BaseYaml "$env:templatePath/empty.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
@@ -105,7 +105,7 @@ InModuleScope ScoopPlaybook {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "verify missing role playbook should throw (mode: $env:Mode)" {
+                It "verify missing role playbook should throw" {
                     { VerifyYaml -BaseYaml "$env:templatePath/missingrole.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
@@ -113,7 +113,7 @@ InModuleScope ScoopPlaybook {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "verify invalid role playbook should throw (mode: $env:Mode)" {
+                It "verify invalid role playbook should throw" {
                     { VerifyYaml -BaseYaml "$env:templatePath/invalidrole.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
@@ -121,7 +121,7 @@ InModuleScope ScoopPlaybook {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "verify no task should not throw (mode: $env:Mode)" {
+                It "verify no task should not throw" {
                     { VerifyYaml -BaseYaml "$env:templatePath/notaskfile.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
@@ -129,21 +129,65 @@ InModuleScope ScoopPlaybook {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "verify not exists role playbook should throw (mode: $env:Mode)" {
+                It "verify not exists role playbook should throw" {
                     { VerifyYaml -BaseYaml "$env:templatePath/notexistsrole.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
         }
+    }
 
-        Describe "App Installation Test" {
+    foreach ($mode in "check", "run") {
+        $env:Mode = $mode
+        $env:templatePath = "tests/templates"
+        Describe "Scoop Bucket Test (mode: $env:Mode)" {
+            Context "When bucket Install" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "installing bucket should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/bucket_install.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+                It "installing bucket extras should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/bucket_install_extras.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+            }
+            Context "When bucket Uninstall" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "uninstalling bucket should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/bucket_uninstall.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+                It "uninstalling bucket extras should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/bucket_uninstall_extras.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+                It "uninstall non existing bucket should not throw" {
+                    { RunMain -BaseYaml "$env:templatePath/bucket_uninstall_not_exists_bucket.yml" -Mode $env:MODE } | Should -Not -Throw
+                }
+            }
+            Context "When bucket Install invalid" {
+                BeforeEach {
+                    Mock Write-Host { } -Verifiable
+                }
+                It "install non existing source bucket should throw" {
+                    { RunMain -BaseYaml "$env:templatePath/bucket_install_not_exists_source.yml" -Mode $env:MODE } | Should -Throw
+                }
+            }
+        }
+    }
+
+    foreach ($mode in "check", "run") {
+        $env:Mode = $mode
+        $env:templatePath = "tests/templates"
+        Describe "Scoop App Test (mode: $env:Mode)" {
             Context "When package is exists" {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "installing package should not throw (mode: $env:Mode)" {
+                It "installing package should not throw" {
                     { RunMain -BaseYaml "$env:templatePath/app_install.yml" -Mode $env:MODE } | Should -Not -Throw
                 }
-                It "uninstalling package should not throw (mode: $env:Mode)" {
+                It "uninstalling package should not throw" {
                     { RunMain -BaseYaml "$env:templatePath/app_uninstall.yml" -Mode $env:MODE } | Should -Not -Throw
                 }
             }
@@ -151,10 +195,10 @@ InModuleScope ScoopPlaybook {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "install non existing package should throw (mode: $env:Mode)" {
+                It "install non existing package should throw" {
                     { RunMain -BaseYaml "$env:templatePath/app_install_not_exists_package.yml" -Mode $env:MODE } | Should -Throw
                 }
-                It "uninstall non existing package should throw (mode: $env:Mode)" {
+                It "uninstall non existing package should throw" {
                     { RunMain -BaseYaml "$env:templatePath/app_uninstall_not_exists_package.yml" -Mode $env:MODE } | Should -Throw
                 }
             }
@@ -162,10 +206,10 @@ InModuleScope ScoopPlaybook {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
-                It "installing package should throw (mode: $env:Mode)" {
+                It "installing package should throw" {
                     { RunMain -BaseYaml "$env:templatePath/app_install_missingbucket.yml" -Mode $env:MODE } | Should -Throw
                 }
-                It "uninstalling package  should throw (mode: $env:Mode)" {
+                It "uninstalling package  should throw" {
                     { RunMain -BaseYaml "$env:templatePath/app_uninstall_missingbucket.yml" -Mode $env:MODE } | Should -Throw
                 }
             }

@@ -1,0 +1,4 @@
+- name: "bucket_uninstall"
+  scoop_bucket_install:
+    state: absent
+    bucket: guitarrapc

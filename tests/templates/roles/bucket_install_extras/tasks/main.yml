@@ -1,0 +1,4 @@
+- name: "bucket_install_extras"
+  scoop_bucket_install:
+    state: present
+    bucket: extras

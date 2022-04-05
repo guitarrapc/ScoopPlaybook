@@ -1,0 +1,5 @@
+- name: "bucket_install_not_exists_source"
+  scoop_bucket_install:
+    state: present
+    bucket: guitarrapc-not-exists
+    source: https://github.com/guitarrapc/scoop-bucket-not-exists.git

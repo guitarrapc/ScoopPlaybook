@@ -23,6 +23,77 @@ $script:scoopVersion = [ScoopVersionInfo]::unkown
 #endregion
 
 #region Scoop Command Wrapper
+function ScoopCmdBucketAdd {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Bucket,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Source
+    )
+
+    Write-Debug "ScoopCmdBucketAdd - Bucket: $Bucket, Source: $Source"
+
+    # version_0_1_0_or_higher output to 6 (information) stream
+    # version_0_0_1_and_lower output to 6 (information) stream
+    if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
+        scoop bucket add "$Bucket" "$Source" *>&1
+        if (!$?) {
+            throw $(scoop bucket add "$Bucket" "$Source" *>&1)
+        }
+    }
+    elseif ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
+        scoop bucket add "$Bucket" "$Source" *>&1
+    }
+    else {
+        scoop bucket add "$Bucket" "$Source" *>&1
+    }
+}
+function ScoopCmdBucketList {
+    [CmdletBinding()]
+    param()
+
+    if ($script:scoopVersion -eq [ScoopVersionInfo]::unkown) {
+        $script:scoopVersion = GetScoopVersion
+    }
+
+    # version_0_1_0_or_higher output to 1 (stdout, Type PSCustomObject) stream
+    # version_0_0_1_and_lower output to 6 (information) stream
+    if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
+        scoop bucket list
+    }
+    elseif ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
+        scoop bucket list *>&1
+    }
+    else {
+        scoop bucket list *>&1
+    }
+}
+function ScoopCmdBucketRemove {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Bucket
+    )
+
+    Write-Debug "ScoopCmdBucketRemove - Bucket: $Bucket"
+
+    # version_0_1_0_or_higher output to 6 (information) stream
+    # version_0_0_1_and_lower output to 6 (information) stream
+    if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
+        scoop bucket rm "$Bucket" *>&1
+        if (!$?) {
+            throw $(scoop bucket rm "$Bucket" *>&1)
+        }
+    }
+    elseif ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
+        scoop bucket rm "$Bucket" *>&1
+    }
+    else {
+        scoop bucket rm "$Bucket" *>&1
+    }
+}
 function ScoopCmdCheckup {
     # version_0_1_0_or_higher output to 6 (information) stream
     # version_0_0_1_and_lower output to 6 (information) stream
@@ -39,11 +110,12 @@ function ScoopCmdInfo {
         $script:scoopVersion = GetScoopVersion
     }
 
-    # version_0_1_0_or_higher output to 1 (stdout) stream. type PSCustomObject
+    # version_0_1_0_or_higher output to 1 (stdout, Type PSCustomObject) stream.
     # version_0_0_1_and_lower output to 6 (information) stream.
     if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
         scoop info $App
         if (!$?) {
+            # HACK: error is output to Information stream... why this design...
             throw $(scoop info $App 6>&1)
         }
     }
@@ -61,6 +133,8 @@ function ScoopCmdInstall {
         [string]$App
     )
 
+    Write-Debug "ScoopCmdInstall - App: $App"
+
     # version_0_1_0_or_higher output to 6 (information) stream
     # version_0_0_1_and_lower output to 6 (information) stream
     scoop install $App *>&1
@@ -77,7 +151,7 @@ function ScoopCmdList {
         $script:scoopVersion = GetScoopVersion
     }
 
-    # version_0_1_0_or_higher output to 1 (stdout / type ScoopApps) and 6 (information) stream.
+    # version_0_1_0_or_higher output to 1 (stdout / Type ScoopApps) and 6 (information) stream.
     # version_0_0_1_and_lower output to 6 (information) stream.
     if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
         # information stream has output "Installed apps matching '$App':". Suppress it.
@@ -94,8 +168,8 @@ function ScoopCmdStatus {
     [CmdletBinding()]
     param()
 
-    # version_0_1_0_or_higher output to 1 (stdout) & 6 (information) stream
-    # version_0_0_1_and_lower output to 1 (stdout) & 6 (information) stream
+    # version_0_1_0_or_higher output to 1 (stdout, Type string) & 6 (information) stream
+    # version_0_0_1_and_lower output to 1 (stdout, Type string) & 6 (information) stream
     scoop status *>&1
 }
 function ScoopCmdUninstall {
@@ -104,6 +178,8 @@ function ScoopCmdUninstall {
         [Parameter(Mandatory = $true)]
         [string]$App
     )
+
+    Write-Debug "ScoopCmdUnInstall - App: $App"
 
     # version_0_1_0_or_higher output to 6 (information) stream
     # version_0_0_1_and_lower output to 6 (information) stream
@@ -124,9 +200,7 @@ function ScoopCmdUpdate {
         [string]$App
     )
 
-    if ([string]::IsNullOrWhiteSpace($App)) {
-        throw [System.ArgumentNullException]::New($App)
-    }
+    Write-Debug "ScoopCmdUpdate - App: $App"
 
     # version_0_1_0_or_higher output to 6 (information) stream
     # version_0_0_1_and_lower output to 6 (information) stream
@@ -603,14 +677,29 @@ function ScoopBucketStateHandler {
     switch ($state) {
         $([StateElement]::present) {
             if ([string]::IsNullOrWhiteSpace($module.source)) {
-                ScoopBucketInstall -Bucket $module.bucket -Tag $Tag -DryRun $dryRun
+                if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
+                    ScoopBucketInstall -Bucket $module.bucket -Tag $Tag -DryRun $dryRun
+                }
+                else {
+                    ScoopBucketInstallObsolete -Bucket $module.bucket -Tag $Tag -DryRun $dryRun
+                }
             }
             else {
-                ScoopBucketInstall -Bucket $module.bucket -Source $module.source -Tag $Tag -DryRun $dryRun
+                if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
+                    ScoopBucketInstall -Bucket $module.bucket -Source $module.source -Tag $Tag -DryRun $dryRun
+                }
+                else {
+                    ScoopBucketInstallObsolete -Bucket $module.bucket -Source $module.source -Tag $Tag -DryRun $dryRun
+                }
             }
         }
         $([StateElement]::absent) {
-            ScoopBucketUninstall -Bucket $module.bucket -Tag $Tag -DryRun $dryRun
+            if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
+                ScoopBucketUninstall -Bucket $module.bucket -Tag $Tag -DryRun $dryRun
+            }
+            else {
+                ScoopBucketUninstallObsolete -Bucket $module.bucket -Tag $Tag -DryRun $dryRun
+            }
         }
     }
 }
@@ -623,10 +712,9 @@ function ScoopBucketExists {
         [string]$Bucket
     )
 
-    $buckets = scoop bucket list
-    return ($null -ne $buckets) -and ($buckets -match $Bucket)
+    $bucket = ScoopCmdBucketList | Where-Object Name -eq "$Bucket"
+    return $null -ne $bucket
 }
-
 function ScoopBucketInstall {
     [CmdletBinding()]
     [OutputType([void])]
@@ -645,7 +733,7 @@ function ScoopBucketInstall {
         PrintChanged -Message "[${Tag}]: $Bucket => Require install ($Source)"
         if ($DryRun) { continue }
         PrintSpace
-        scoop bucket add "$Bucket" "$Source"
+        ScoopCmdBucketAdd -Bucket "$Bucket" -Source "$Source"
         RecapChanged
     }
     else {
@@ -653,7 +741,6 @@ function ScoopBucketInstall {
         RecapOk
     }
 }
-
 function ScoopBucketUninstall {
     [CmdletBinding()]
     [OutputType([void])]
@@ -667,6 +754,68 @@ function ScoopBucketUninstall {
     )
 
     if (ScoopBucketExists -Bucket $Bucket) {
+        PrintChanged -Message "[${Tag}]: $Bucket => Require uninstall"
+        if ($DryRun) { continue }
+        PrintSpace
+        ScoopCmdBucketRemove -Bucket $Bucket
+        RecapChanged
+    }
+    else {
+        PrintOk -Message "[${Tag}]: $Bucket"
+        RecapOk
+    }
+}
+function ScoopBucketExistsObsolete {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Bucket
+    )
+
+    $buckets = scoop bucket list
+    return ($null -ne $buckets) -and ($buckets -match $Bucket)
+}
+function ScoopBucketInstallOboslete {
+    [CmdletBinding()]
+    [OutputType([void])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Bucket,
+        [Parameter(Mandatory = $false)]
+        [string]$Source,
+        [Parameter(Mandatory = $true)]
+        [Modules]$Tag,
+        [Parameter(Mandatory = $true)]
+        [bool]$DryRun
+    )
+
+    if (!(ScoopBucketExistsObsolete -Bucket $Bucket)) {
+        PrintChanged -Message "[${Tag}]: $Bucket => Require install ($Source)"
+        if ($DryRun) { continue }
+        PrintSpace
+        scoop bucket add "$Bucket" "$Source"
+        RecapChanged
+    }
+    else {
+        PrintOk -Message "[${Tag}]: $Bucket"
+        RecapOk
+    }
+}
+
+function ScoopBucketUninstallObsolete {
+    [CmdletBinding()]
+    [OutputType([void])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Bucket,
+        [Parameter(Mandatory = $true)]
+        [Modules]$Tag,
+        [Parameter(Mandatory = $true)]
+        [bool]$DryRun
+    )
+
+    if (ScoopBucketExistsObsolete -Bucket $Bucket) {
         PrintChanged -Message "[${Tag}]: $Bucket => Require uninstall"
         if ($DryRun) { continue }
         PrintSpace
