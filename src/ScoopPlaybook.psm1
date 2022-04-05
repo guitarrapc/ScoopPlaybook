@@ -24,30 +24,67 @@ $script:scoopVersion = [ScoopVersionInfo]::unkown
 
 #region Scoop Command Wrapper
 function ScoopCmdCheckup {
+    # version_0_1_0_or_higher output to 6 (information) stream
+    # version_0_0_1_and_lower output to 6 (information) stream
     scoop checkup *>&1
 }
 function ScoopCmdInfo([string]$App) {
     if ([string]::IsNullOrWhiteSpace($App)) {
         throw [System.ArgumentNullException]::New($App)
     }
-    scoop info $App *>&1
+    if ($script:scoopVersion -eq [ScoopVersionInfo]::unkown) {
+        $script:scoopVersion = GetScoopVersion
+    }
+
+    # version_0_1_0_or_higher output to 1 (stdout) stream. type PSCustomObject
+    # version_0_0_1_and_lower output to 6 (information) stream.
+    if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
+        scoop info $App
+    }
+    elseif ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
+        scoop info $App *>&1
+    }
+    else {
+        scoop info $App *>&1
+    }
 }
 function ScoopCmdList([string]$App) {
     if ([string]::IsNullOrWhiteSpace($App)) {
         throw [System.ArgumentNullException]::New($App)
     }
-    scoop list $App *>&1
+    if ($script:scoopVersion -eq [ScoopVersionInfo]::unkown) {
+        $script:scoopVersion = GetScoopVersion
+    }
+
+    # version_0_1_0_or_higher output to 1 (stdout) stream. type ScoopApps
+    # version_0_0_1_and_lower output to 6 (information) stream.
+    if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
+        scoop list $App
+    }
+    elseif ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
+        scoop list $App *>&1
+    }
+    else {
+        scoop list $App *>&1
+    }
 }
 function ScoopCmdUpdateAll {
+    # version_0_1_0_or_higher output to 6 (information) stream
+    # version_0_0_1_and_lower output to 6 (information) stream
     scoop update *>&1
 }
 function ScoopCmdUpdate([string]$App) {
     if ([string]::IsNullOrWhiteSpace($App)) {
         throw [System.ArgumentNullException]::New($App)
     }
+
+    # version_0_1_0_or_higher output to 6 (information) stream
+    # version_0_0_1_and_lower output to 6 (information) stream
     scoop update $App *>&1
 }
 function ScoopCmdStatus {
+    # version_0_1_0_or_higher output to 1 (stdout) & 6 (information) stream
+    # version_0_0_1_and_lower output to 1 (stdout) & 6 (information) stream
     scoop status *>&1
 }
 #endregion

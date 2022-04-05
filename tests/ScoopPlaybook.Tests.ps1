@@ -2,7 +2,7 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . "$here\$sut"
 
-InModuleScope "ScoopPlaybook" {
+InModuleScope ScoopPlaybook {
     Describe "Pre execute Test" {
         Context "When there are scoop installed" {
             BeforeEach {
@@ -22,6 +22,51 @@ InModuleScope "ScoopPlaybook" {
             }
         }
     }
+    Describe "Scoop version Test" {
+        Context "When Scoop Version command is valid" {
+            It "scoop info running without error" {
+                { scoop info git } | Should -Not -Throw
+            }
+            It "GetScoopVersion run successfully" {
+                { GetScoopVersion } | Should -Not -Throw
+            }
+        }
+        Context "Scoop command output Type is valid" {
+            It "scoop checkup output type is desired" {
+                (ScoopCmdCheckup | Select-Object -first 1).GetType().FullName | Should -Be "System.Management.Automation.InformationRecord"
+            }
+            It "scoop info output type is desired" {
+                $version = GetScoopVersion
+                if ($version -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
+                    (ScoopCmdInfo -App git | Select-Object -first 1).GetType().FullName | Should -Be "System.Management.Automation.PSCustomObject"
+                }
+                elseif ($version -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
+                    (ScoopCmdInfo -App git | Select-Object -first 1).GetType().FullName | Should -Be "System.String"
+                }
+                else {
+                    (ScoopCmdInfo -App git | Select-Object -first 1).GetType().FullName | Should -Be "System.String"
+                }
+            }
+            It "scoop list output type is desired" {
+                $version = GetScoopVersion
+                if ($version -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
+                    (ScoopCmdList -App git | Select-Object -first 1).GetType().FullName | Should -Be "ScoopApps"
+                }
+                elseif ($version -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
+                    (ScoopCmdList -App git | Select-Object -first 1).GetType().FullName | Should -Be "System.Management.Automation.InformationRecord"
+                }
+                else {
+                    (ScoopCmdList -App git | Select-Object -first 1).GetType().FullName | Should -Be "System.Management.Automation.InformationRecord"
+                }
+            }
+            It "scoop update app output type is desired" {
+                (ScoopCmdUpdate -App git | Select-Object -first 1).GetType().FullName | Should -Be "System.Management.Automation.InformationRecord"
+            }
+            It "scoop status app output type is desired" {
+                ScoopCmdStatus -App git | ForEach-Object { $_.GetType().FullName } | Sort-Object -Unique | Should -BeIn @("System.Management.Automation.InformationRecord", "System.String")
+            }
+        }
+    }
     foreach ($mode in "run", "check") {
         $env:Mode = $mode
         $env:templatePath = "tests/templates"
@@ -38,7 +83,7 @@ InModuleScope "ScoopPlaybook" {
                 }
             }
         }
-        
+
         Describe "Playbook Verify fail pattern" {
             Context "When site.yaml is not exists" {
                 BeforeEach {
