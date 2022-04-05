@@ -677,10 +677,20 @@ function ScoopAppStateHandler {
     $tools = $module[$([ModuleElement]::name.ToString())]
     switch ($state) {
         $([StateElement]::present) {
-            ScoopAppInstall -Tools $tools -Tag $Tag -DryRun $dryRun
+            if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher ) {
+                throw [System.NotImplementedException]::New()
+            }
+            else {
+                ScoopAppInstallObsolete -Tools $tools -Tag $Tag -DryRun $dryRun
+            }
         }
         $([StateElement]::absent) {
-            ScoopAppUninstall -Tools $tools -Tag $Tag -DryRun $dryRun
+            if ($script:scoopVersion -eq [ScoopVersionInfo]::version_0_1_0_or_higher ) {
+                throw [System.NotImplementedException]::New()
+            }
+            else {
+                ScoopAppUninstallObsolete -Tools $tools -Tag $Tag -DryRun $dryRun
+            }
         }
     }
 }
@@ -759,6 +769,120 @@ function ScoopAppInstall {
 }
 
 function ScoopAppUninstall {
+    [OutputType([void])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Tools,
+        [Parameter(Mandatory = $true)]
+        [Modules]$Tag,
+        [Parameter(Mandatory = $true)]
+        [bool]$DryRun
+    )
+
+    # blank definition
+    if ([string]::IsNullOrWhiteSpace($tools)) {
+        Write-Verbose "Skipping, missing any tools"
+        continue
+    }
+
+    foreach ($tool in $tools) {
+        $output = ScoopCmdInfo -App $tool
+        $installed = $output | Select-String -Pattern "Installed:"
+        if ($null -eq $installed) {
+            PrintFail -Message "[${Tag}]: $tool => $output"
+            RecapFailed
+            continue
+        }
+
+        if ($installed.Line -match "no") {
+            PrintOk -Message "[${Tag}]: $tool => Already uninstalled"
+            Write-Verbose $installed.Line
+            RecapOk
+        }
+        else {
+            PrintChanged -Message "[${Tag}]: $tool => Require uninstall"
+            Write-Verbose $installed.Line
+            if ($DryRun) { continue }
+            scoop uninstall $tool | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
+            RecapChanged
+        }
+    }
+}
+
+function ScoopAppInstallObsolete {
+    [CmdletBinding()]
+    [OutputType([void])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Tools,
+        [Parameter(Mandatory = $true)]
+        [Modules]$Tag,
+        [Parameter(Mandatory = $true)]
+        [bool]$DryRun
+    )
+
+    foreach ($tool in $Tools) {
+        $output = ScoopCmdInfo -App $tool
+        # may be typo manifest should throw fast
+        if ($output -match "Could not find manifest for") {
+            PrintFail -Message "[${Tag}]: $tool => $($output)"
+            RecapFailed
+            continue
+        }
+        # successfully found manifest
+        $isFailedPackage = $script:failedPackages -contains $tool
+        $notInstallStatus = ""
+        if ($isFailedPackage) {
+            $notInstallStatus = "(Failed previous installation, begin reinstall.)"
+        }
+        $installed = $output | Select-String -Pattern "Installed:"
+        if ($installed.Line -match "no") {
+            PrintChanged -Message "[${Tag}]: $tool => Require install $notInstallStatus"
+            if ($DryRun) { continue }
+            PrintSpace
+            if ($isFailedPackage) {
+                scoop uninstall $tool
+                PrintSpace
+            }
+            scoop install $tool
+            RecapChanged
+        }
+        else {
+            $outputStrict = ScoopCmdList -App $tool
+            $installedStrictCheck = $outputStrict | Select-String -Pattern "failed"
+            if ($null -ne $installedStrictCheck) {
+                # previous installation was interupped
+                $packageInfo = $outputStrict | Select-Object -Skip 2 -First 1
+                PrintChanged -Message "[${Tag}]: $tool => $($packageInfo) $notInstallStatus"
+                if ($DryRun) { continue }
+                PrintSpace
+                if ($isFailedPackage) {
+                    scoop uninstall $tool
+                    PrintSpace
+                }
+                scoop install $tool
+                RecapChanged
+            }
+            else {
+                $isUpdatable = $updatablePackages -contains $tool
+                $packageInfo = $outputStrict | Select-Object -Skip 2 -First 1
+                if (!$isUpdatable) {
+                    PrintOk -Message "[${Tag}]: $tool => $($packageInfo) (status: latest)"
+                    RecapOk
+                }
+                else {
+                    PrintChanged -Message "[${Tag}]: $tool => $($packageInfo) (status: updatable)"
+                    if ($DryRun) { continue }
+                    PrintSpace
+                    ScoopCmdUpdate -App $tool | ForEach-Object { PrintInfo -Message $_ }
+                    RecapChanged
+                }
+            }
+        }
+    }
+}
+
+function ScoopAppUninstallObsolete {
     [OutputType([void])]
     param(
         [Parameter(Mandatory = $true)]
