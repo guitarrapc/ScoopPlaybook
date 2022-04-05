@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 using namespace System.Collections.Generic
 
 #region setup
@@ -1148,6 +1148,40 @@ function ScoopAppUninstallObsolete {
 #endregion
 
 function Invoke-ScoopPlaybook {
+    <#
+        .SYNOPSIS
+        Run ScoopPlaybook.
+
+        .DESCRIPTION
+        Pickup Playbook definition yaml and run scoop app/bucket operations.
+        Alias is "Scoop-Playbook".
+
+        .PARAMETER LiteralPath
+        Specifies the Playbook yaml file. "./site.yml is the default"
+
+        .PARAMETER Mode
+        Specifies the run mode. "run" is the default. "check" will not not effect (=dry-run). "run" will take effect.
+
+        .INPUTS
+        None. You cannot pipe objects to Invoke-ScoopPlaybook.
+
+        .OUTPUTS
+        Void. Invoke-ScoopPlaybook returns no output.
+
+        .EXAMPLE
+        PS> Invoke-ScoopPlaybook
+
+        .EXAMPLE
+        PS> Scoop-Playbook
+
+        .EXAMPLE
+        PS> Scoop-Playbook -Mode check
+        Dry-run.
+
+        .LINK
+        Source code Repo: https://github.com/guitarrapc/ScoopPlaybook
+    #>
+
     [CmdletBinding()]
     [OutputType([void])]
     param(
