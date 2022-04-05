@@ -213,7 +213,7 @@ function GetScoopVersion {
     [OutputType([ScoopVersionInfo])]
     param()
 
-    $typeName = (scoop info git | Select-Object -First 1).GetType().FullName
+    $typeName = (scoop info git | Select-Object -first 1).GetType().FullName
     if ($typeName -eq "System.Management.Automation.PSCustomObject") {
         return [ScoopVersionInfo]::version_0_1_0_or_higher
     }
@@ -712,7 +712,7 @@ function ScoopBucketExists {
         [string]$Bucket
     )
 
-    $result = ScoopCmdBucketList | Where-Object { $_.Name -eq "$Bucket" }
+    $result = ScoopCmdBucketList | Where-Object Name -eq "$Bucket"
     return $null -ne $result
 }
 function ScoopBucketInstall {
@@ -930,7 +930,7 @@ function ScoopAppInstall {
                 RecapChanged
             }
             else {
-                $packageInfo = ScoopCmdList -App $app | Where-Object { $_.Name -eq $app }
+                $packageInfo = ScoopCmdList -App $app | Where-Object Name -eq $app
                 $previoudInstallFailed = $packageInfo.Info -Match "Install failed"
                 if ($previoudInstallFailed) {
                     # previous installation was interupped
