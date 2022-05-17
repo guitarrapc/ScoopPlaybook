@@ -144,6 +144,7 @@ InModuleScope ScoopPlaybook {
                 BeforeEach {
                     Mock Write-Host { } -Verifiable
                 }
+                # NOTE: scoop 0.2.0 has bug and test will fail. see: https://github.com/ScoopInstaller/Scoop/issues/4917
                 It "installing bucket should not throw" {
                     { RunMain -BaseYaml "$env:templatePath/bucket_install.yml" -Mode $env:MODE } | Should -Not -Throw
                 }
