@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install Modules
         shell: pwsh
         run: |
@@ -26,14 +26,9 @@ jobs:
         run: |
           Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1 -Severity Warning
           Invoke-ScriptAnalyzer -Path ./src/ScoopPlaybook.psm1 -Settings CodeFormatting
-      # Actions shell is Administartor. see https://github.com/ScoopInstaller/Install#for-admin
-      # Need install scoop in same run of Invoke-Pester.
-      - name: Run Unit Test
-        shell: pwsh
+      - uses: MinoruSekine/setup-scoop@main # use @main to fix. see https://github.com/MinoruSekine/setup-scoop/issues/7
+      - name: Test Scoop installed
         run: |
-          iwr -useb get.scoop.sh -outfile 'install.ps1'
-          .\install.ps1 -RunAsAdmin
-          scoop
           echo "* Show Scoop version"
           scoop --version
           echo "* Show Scoop buckets"
@@ -42,5 +37,8 @@ jobs:
           scoop list
           echo "* Install git"
           scoop install git
+      - name: Run Unit Test
+        shell: pwsh
+        run: |
           echo "* Begin test"
           Invoke-Pester -CI
