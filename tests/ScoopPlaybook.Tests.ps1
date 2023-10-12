@@ -63,13 +63,13 @@ InModuleScope ScoopPlaybook {
                 }
             }
             It "scoop uninstall output type is desired" {
-                (ScoopCmdUninstall -App bat | Select-Object | Get-Member).TypeName | Sort-Object -Unique | Should -BeIn @("System.Management.Automation.InformationRecord", "System.String")
+                ScoopCmdUninstall -App bat | Select-Object | Get-Member | Select-Object -ExpandProperty TypeName | Sort-Object -Unique | Should -BeIn @("System.Management.Automation.InformationRecord", "System.String")
             }
             It "scoop update app output type is desired" {
-                (ScoopCmdUpdate -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
+                ScoopCmdUpdate -App git | Get-Member | Select-Object -ExpandProperty TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
             }
             It "scoop status app output type is desired" {
-                (ScoopCmdStatus | Get-Member).TypeName | Sort-Object -Unique | Should -Be "ScoopStatus"
+                ScoopCmdStatus | Get-Member | Select-Object -ExpandProperty TypeName | Sort-Object -Unique | Should -Be "ScoopStatus"
             }
         }
     }
