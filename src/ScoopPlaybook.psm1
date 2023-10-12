@@ -687,7 +687,7 @@ function ScoopBucketExists {
         [string]$Bucket
     )
 
-    $result = ScoopCmdBucketList | Where-Object Name -eq "$Bucket"
+    $result = ScoopCmdBucketList | Where-Object { $_.Name -eq "$Bucket" }
     return $null -ne $result
 }
 function ScoopBucketInstall {
@@ -910,7 +910,7 @@ function ScoopAppInstall {
                 RecapChanged
             }
             else {
-                $packageInfo = ScoopCmdList -App $app | Where-Object Name -eq $app
+                $packageInfo = ScoopCmdList -App $app | Where-Object { $_.Name -eq $app }
                 $previoudInstallFailed = $packageInfo.Info -Match "Install failed"
                 if ($previoudInstallFailed) {
                     # previous installation was interupped
