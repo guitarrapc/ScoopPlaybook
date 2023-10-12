@@ -177,7 +177,7 @@ function ScoopCmdStatus {
     # 7zip                          23.00               23.01
     # git-secrets                   1.3.0                                    git
     # hack-font                                                                                   Install failed, Manifest removed
-    scoop status
+    scoop status *>&1 | Where-Object { $_.GetType().Name -ne "InformationRecord" }
 }
 function ScoopCmdUninstall {
     [CmdletBinding()]
