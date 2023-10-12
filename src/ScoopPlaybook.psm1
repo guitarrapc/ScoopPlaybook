@@ -141,6 +141,7 @@ function ScoopCmdInstall {
 }
 
 function ScoopCmdList {
+    [OutputType([ScoopApps])]
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -165,6 +166,7 @@ function ScoopCmdList {
     }
 }
 function ScoopCmdStatus {
+    [OutputType([ScoopStatus[]])]
     [CmdletBinding()]
     param()
 
