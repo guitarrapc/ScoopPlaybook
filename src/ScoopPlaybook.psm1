@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 using namespace System.Collections.Generic
 
 #region setup
@@ -707,9 +707,10 @@ function ScoopBucketInstall {
     $exists = ScoopBucketExists -Bucket $Bucket
     if (!$exists) {
         PrintChanged -Message "[${Tag}]: $Bucket => Require install ($Source)"
-        if ($DryRun) { continue }
-        PrintSpace
-        ScoopCmdBucketAdd -Bucket "$Bucket" -Source "$Source"
+        if (!$DryRun) {
+            PrintSpace
+            ScoopCmdBucketAdd -Bucket "$Bucket" -Source "$Source"
+        }
         RecapChanged
     }
     else {
@@ -731,9 +732,10 @@ function ScoopBucketUninstall {
     $exists = ScoopBucketExists -Bucket $Bucket
     if ($exists) {
         PrintChanged -Message "[${Tag}]: $Bucket => Require uninstall"
-        if ($DryRun) { continue }
-        PrintSpace
-        ScoopCmdBucketRemove -Bucket $Bucket
+        if (!$DryRun) {
+            PrintSpace
+            ScoopCmdBucketRemove -Bucket $Bucket
+        }
         RecapChanged
     }
     else {
@@ -769,9 +771,10 @@ function ScoopBucketInstallOboslete {
     $exists = ScoopBucketExistsObsolete -Bucket $Bucket
     if (!$exists) {
         PrintChanged -Message "[${Tag}]: $Bucket => Require install ($Source)"
-        if ($DryRun) { continue }
-        PrintSpace
-        scoop bucket add "$Bucket" "$Source"
+        if (!$DryRun) {
+            PrintSpace
+            scoop bucket add "$Bucket" "$Source"
+        }
         RecapChanged
     }
     else {
@@ -795,9 +798,10 @@ function ScoopBucketUninstallObsolete {
     $exists = ScoopBucketExistsObsolete -Bucket $Bucket
     if ($exists) {
         PrintChanged -Message "[${Tag}]: $Bucket => Require uninstall"
-        if ($DryRun) { continue }
-        PrintSpace
-        scoop bucket rm $Bucket
+        if (!$DryRun) {
+            PrintSpace
+            scoop bucket rm $Bucket
+        }
         RecapChanged
     }
     else {
@@ -895,13 +899,14 @@ function ScoopAppInstall {
             }
             if (!$isInstalled) {
                 PrintChanged -Message "[${Tag}]: $app => Require install $notInstallStatus"
-                if ($DryRun) { continue }
-                PrintSpace
-                if ($isFailedPackage) {
-                    ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
+                if (!$DryRun) {
                     PrintSpace
+                    if ($isFailedPackage) {
+                        ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
+                        PrintSpace
+                    }
+                    ScoopCmdInstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
                 }
-                ScoopCmdInstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
                 RecapChanged
             }
             else {
@@ -910,14 +915,15 @@ function ScoopAppInstall {
                 if ($previoudInstallFailed) {
                     # previous installation was interupped
                     PrintChanged -Message "[${Tag}]: $app => Updated: $($packageInfo.Updated) $($packageInfo.Info)"
-                    if ($DryRun) { continue }
-                    PrintSpace
-                    # re-install package.
-                    if ($isFailedPackage) {
-                        ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
+                    if (!$DryRun) {
                         PrintSpace
+                        # re-install package.
+                        if ($isFailedPackage) {
+                            ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
+                            PrintSpace
+                        }
+                        ScoopCmdInstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
                     }
-                    ScoopCmdInstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
                     RecapChanged
                 }
                 else {
@@ -930,17 +936,18 @@ function ScoopAppInstall {
                     else {
                         # install new package.
                         PrintChanged -Message "[${Tag}]: $app => Version: $($packageInfo.Version), Updated: $($packageInfo.Updated) (status: updatable)"
-                        if ($DryRun) { continue }
-                        PrintSpace
-                        $script:appErrorExists = $false
-                        ScoopCmdUpdate -App $app | Out-String -Stream | ForEach-Object {
-                            Write-Output "    $_";
-                            if ($_ -match "ERROR Application .* is still running.*") {
-                                $script:appErrorExists = $true
+                        if (!$DryRun) {
+                            PrintSpace
+                            $script:appErrorExists = $false
+                            ScoopCmdUpdate -App $app | Out-String -Stream | ForEach-Object {
+                                Write-Output "    $_";
+                                if ($_ -match "ERROR Application .* is still running.*") {
+                                    $script:appErrorExists = $true
+                                }
                             }
-                        }
-                        if ($script:appErrorExists) {
-                            throw "App installation failed."
+                            if ($script:appErrorExists) {
+                                throw "App installation failed."
+                            }
                         }
                         RecapChanged
                     }
@@ -991,8 +998,9 @@ function ScoopAppUninstall {
                 # uninstall package.
                 PrintChanged -Message "[${Tag}]: $app => Require uninstall"
                 Write-Verbose "$($output.Name) Version: $($output.Version), Bucket: $($output.Bucket)"
-                if ($DryRun) { continue }
-                ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
+                if (!$DryRun) {
+                    ScoopCmdUninstall -App $app | Out-String -Stream | ForEach-Object { Write-Output "    $_" }
+                }
                 RecapChanged
             }
         }
@@ -1034,13 +1042,14 @@ function ScoopAppInstallObsolete {
         $installed = $output | Select-String -Pattern "Installed:"
         if ($installed.Line -match "no") {
             PrintChanged -Message "[${Tag}]: $tool => Require install $notInstallStatus"
-            if ($DryRun) { continue }
-            PrintSpace
-            if ($isFailedPackage) {
-                scoop uninstall $tool
+            if (!$DryRun) {
                 PrintSpace
+                if ($isFailedPackage) {
+                    scoop uninstall $tool
+                    PrintSpace
+                }
+                ScoopCmdInstall -App $tool
             }
-            ScoopCmdInstall -App $tool
             RecapChanged
         }
         else {
@@ -1050,13 +1059,14 @@ function ScoopAppInstallObsolete {
                 # previous installation was interupped
                 $packageInfo = $outputStrict | Select-Object -Skip 2 -First 1
                 PrintChanged -Message "[${Tag}]: $tool => $($packageInfo) $notInstallStatus"
-                if ($DryRun) { continue }
-                PrintSpace
-                if ($isFailedPackage) {
-                    ScoopCmdIninstall -App $tool
+                if (!$DryRun) {
                     PrintSpace
+                    if ($isFailedPackage) {
+                        ScoopCmdIninstall -App $tool
+                        PrintSpace
+                    }
+                    ScoopCmdInstall -App $tool
                 }
-                ScoopCmdInstall -App $tool
                 RecapChanged
             }
             else {
@@ -1068,9 +1078,10 @@ function ScoopAppInstallObsolete {
                 }
                 else {
                     PrintChanged -Message "[${Tag}]: $tool => $($packageInfo) (status: updatable)"
-                    if ($DryRun) { continue }
-                    PrintSpace
-                    ScoopCmdUpdate -App $tool | ForEach-Object { PrintInfo -Message $_ }
+                    if (!$DryRun) {
+                        PrintSpace
+                        ScoopCmdUpdate -App $tool | ForEach-Object { PrintInfo -Message $_ }
+                    }
                     RecapChanged
                 }
             }
@@ -1112,8 +1123,9 @@ function ScoopAppUninstallObsolete {
         else {
             PrintChanged -Message "[${Tag}]: $tool => Require uninstall"
             Write-Verbose $installed.Line
-            if ($DryRun) { continue }
-            scoop uninstall $tool | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
+            if (!$DryRun) {
+                scoop uninstall $tool | Out-String -Stream | ForEach-Object { Write-Host "  $_" }
+            }
             RecapChanged
         }
     }
