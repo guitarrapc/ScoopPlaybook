@@ -19,7 +19,7 @@ jobs:
         run: |
           Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
           Install-Module -Name PowerShell-Yaml -Scope CurrentUser -Force
-          Install-Module -Name Pester -Scope CurrentUser -Force -PathThru
+          Install-Module -Name Pester -Scope CurrentUser -Force
           Get-InstalledModule -Name PSScriptAnalyzer,PowerShell-Yaml,Pester
       - name: Run PSScriptAnalyzer
         shell: pwsh
