@@ -3,7 +3,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: 0 0 * * 0 # At 00:00 on Sunday.
-
   push:
     branches: ["main"]
   pull_request:
@@ -14,31 +13,37 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install Modules
         shell: pwsh
         run: |
           Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
           Install-Module -Name PowerShell-Yaml -Scope CurrentUser -Force
           Install-Module -Name Pester -Scope CurrentUser -Force
+          Get-InstalledModule -Name PSScriptAnalyzer,PowerShell-Yaml,Pester
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
           Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1 -Severity Warning
           Invoke-ScriptAnalyzer -Path ./src/ScoopPlaybook.psm1 -Settings CodeFormatting
       - uses: MinoruSekine/setup-scoop@main # use @main to fix. see https://github.com/MinoruSekine/setup-scoop/issues/7
-      - name: Test Scoop installed
-        run: |
-          echo "* Show Scoop version"
-          scoop --version
-          echo "* Show Scoop buckets"
-          scoop bucket list
-          echo "* Show Scoop apps"
-          scoop list
-          echo "* Install git"
-          scoop install git
+      - name: Scoop Version
+        run: scoop --version
+      - name: List Scoop Buckets
+        run: scoop bucket list
+      - name: Is scoop can install app?
+        run: scoop install yq
+      - name: List Scoop Apps
+        run: scoop list
       - name: Run Unit Test
         shell: pwsh
         run: |
-          echo "* Begin test"
-          Invoke-Pester -CI
+          $PesterPreference = New-PesterConfiguration
+          # Show each test progress. https://pester.dev/docs/usage/output
+          $PesterPreference.Output.Verbosity = 'Detailed'
+          $PesterPreference.Output.StackTraceVerbosity = 'Full'
+          $PesterPreference.Output.CIFormat = 'GitHubActions'
+          # -CI option https://pester.dev/docs/commands/Invoke-Pester#-ci
+          $PesterPreference.TestResult.Enabled = $true
+          $PesterPreference.Run.Exit = $true
+          Invoke-Pester -Configuration $PesterPreference
