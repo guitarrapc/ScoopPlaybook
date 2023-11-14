@@ -29,12 +29,12 @@ jobs:
       - uses: MinoruSekine/setup-scoop@main # use @main to fix. see https://github.com/MinoruSekine/setup-scoop/issues/7
       - name: Scoop Version
         run: scoop --version
-      - name: Scoop Buckets
+      - name: List Scoop Buckets
         run: scoop bucket list
-      - name: Scoop Apps
-        run: scoop list
       - name: Is scoop can install app?
         run: scoop install yq
+      - name: List Scoop Apps
+        run: scoop list
       - name: Run Unit Test
         shell: pwsh
         run: |
