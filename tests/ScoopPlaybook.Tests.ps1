@@ -2,6 +2,10 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . "$here\$sut"
 
+BeforeAll {
+    scoop install 7zip
+    scoop uninstall bat
+}
 InModuleScope ScoopPlaybook {
     Describe "Pre execute Test" {
         Context "When there are scoop installed" {
@@ -25,7 +29,7 @@ InModuleScope ScoopPlaybook {
     Describe "Scoop version Test" {
         Context "When Scoop Version command is valid" {
             It "scoop info running without error" {
-                { scoop info git } | Should -Not -Throw
+                { scoop info 7zip } | Should -Not -Throw
             }
             It "GetScoopVersion run successfully" {
                 { GetScoopVersion } | Should -Not -Throw
@@ -38,35 +42,38 @@ InModuleScope ScoopPlaybook {
             It "scoop info output type is desired" {
                 $version = GetScoopVersion
                 if ($version -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
-                    (ScoopCmdInfo -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.PSCustomObject"
+                    (ScoopCmdInfo -App 7zip | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.PSCustomObject"
                 }
                 elseif ($version -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
-                    (ScoopCmdInfo -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.String"
+                    (ScoopCmdInfo -App 7zip | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.String"
                 }
                 else {
-                    (ScoopCmdInfo -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.String"
+                    (ScoopCmdInfo -App 7zip | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.String"
                 }
             }
             It "scoop install output type is desired" {
+                # 1st run contains string and InformationRecord
                 (ScoopCmdInstall -App bat | Select-Object | Get-Member).TypeName | Sort-Object -Unique | Should -BeIn @("System.Management.Automation.InformationRecord", "System.String")
+                # 2nd run only contains InformationRecord
+                (ScoopCmdInstall -App bat | Select-Object | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
             }
             It "scoop list output type is desired" {
                 $version = GetScoopVersion
                 if ($version -eq [ScoopVersionInfo]::version_0_1_0_or_higher) {
-                    (ScoopCmdList -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "ScoopApps"
+                    (ScoopCmdList -App 7zip | Get-Member).TypeName | Sort-Object -Unique | Should -Be "ScoopApps"
                 }
                 elseif ($version -eq [ScoopVersionInfo]::version_0_0_1_and_lower) {
-                    (ScoopCmdList -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
+                    (ScoopCmdList -App 7zip | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
                 }
                 else {
-                    (ScoopCmdList -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
+                    (ScoopCmdList -App 7zip | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
                 }
             }
             It "scoop uninstall output type is desired" {
                 (ScoopCmdUninstall -App bat | Select-Object | Get-Member).TypeName | Sort-Object -Unique | Should -BeIn @("System.Management.Automation.InformationRecord", "System.String")
             }
             It "scoop update app output type is desired" {
-                (ScoopCmdUpdate -App git | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
+                (ScoopCmdUpdate -App 7zip | Get-Member).TypeName | Sort-Object -Unique | Should -Be "System.Management.Automation.InformationRecord"
             }
             It "scoop status app output type is desired" {
                 # InvalidOperationException: You must specify an object for the Get-Member cmdlet. <- cannot resolve....
