@@ -13,7 +13,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Install Modules
         shell: pwsh
         run: |
@@ -26,7 +26,7 @@ jobs:
         run: |
           Invoke-ScriptAnalyzer -Path ./src -Settings ./PSScriptAnalyzerSettings.psd1 -Severity Warning
           Invoke-ScriptAnalyzer -Path ./src/ScoopPlaybook.psm1 -Settings CodeFormatting
-      - uses: MinoruSekine/setup-scoop@main # use @main to fix. see https://github.com/MinoruSekine/setup-scoop/issues/7
+      - uses: MinoruSekine/setup-scoop@80f7f261b2e62af5d7450c85317b194046aa91f5 # v4.0.1
       - name: Scoop Version
         run: scoop --version
       - name: List Scoop Buckets
