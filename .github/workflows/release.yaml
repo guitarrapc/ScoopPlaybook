@@ -8,7 +8,7 @@ jobs:
   release:
     permissions:
       contents: write
-    runs-on: windows-latest
+    runs-on: windows-2025
     timeout-minutes: 15
     steps:
       - run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
